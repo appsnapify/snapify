@@ -1,3 +1,4 @@
+import { Metadata } from 'next'
 import EventoDetalhesClient from './EventoDetalhesClient'
 
 // Dados mockados para exemplo
@@ -43,10 +44,20 @@ const event = {
   ]
 }
 
-export default function EventoDetalhesPage({
-  params,
-}: {
-  params: { id: string }
-}) {
+interface Props {
+  params: {
+    id: string
+  }
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  return {
+    title: `Evento ${params.id} - Detalhes`,
+  }
+}
+
+export default async function EventoDetalhesPage(props: Props) {
+  const { params } = props
   return <EventoDetalhesClient id={params.id} event={event} />
 } 
