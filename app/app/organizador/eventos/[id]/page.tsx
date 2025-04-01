@@ -44,20 +44,16 @@ const event = {
   ]
 }
 
-interface Props {
-  params: {
-    id: string
-  }
-  searchParams: { [key: string]: string | string[] | undefined }
+type EventoParams = {
+  id: string;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: EventoParams }): Promise<Metadata> {
   return {
     title: `Evento ${params.id} - Detalhes`,
   }
 }
 
-export default async function EventoDetalhesPage(props: Props) {
-  const { params } = props
+export default async function EventoDetalhesPage({ params }: { params: EventoParams }) {
   return <EventoDetalhesClient id={params.id} event={event} />
-} 
+}
