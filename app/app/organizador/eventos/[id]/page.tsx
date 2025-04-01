@@ -44,9 +44,9 @@ const event = {
   ]
 }
 
-type PageProps = {
+interface PageProps {
   params: Promise<{ id: string }>
-  searchParams?: { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -56,8 +56,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default async function EventoDetalhesPage({ params, searchParams }: PageProps) {
-  const resolvedParams = await params
+export default async function EventoDetalhesPage(props: PageProps) {
+  const resolvedParams = await props.params
   return <EventoDetalhesClient id={resolvedParams.id} event={event} />
 }
 
