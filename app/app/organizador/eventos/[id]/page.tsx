@@ -43,14 +43,10 @@ const event = {
   ]
 }
 
-type PageProps = {
-  params: Promise<{ id: string }>;
-  searchParams: { [key: string]: string | string[] | undefined };
-}
-
 export default async function EventoDetalhesPage({
   params,
-}: PageProps) {
-  const resolvedParams = await params;
-  return <EventoDetalhesClient id={resolvedParams.id} event={event} />
+}: {
+  params: { id: string }
+}) {
+  return <EventoDetalhesClient id={params.id} event={event} />
 } 
