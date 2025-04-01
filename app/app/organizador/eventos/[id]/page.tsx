@@ -43,7 +43,7 @@ const event = {
   ]
 }
 
-export default async function EventoDetalhesPage({
+export default function EventoDetalhesPage({
   params,
 }: {
   params: { id: string }
