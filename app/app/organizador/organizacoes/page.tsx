@@ -19,6 +19,19 @@ interface Organization {
   address?: string
 }
 
+interface UserOrgJoin {
+  organization_id: string
+  role: string
+  organizations: {
+    id: string
+    name: string
+    slug: string
+    logotipo?: string
+    banner_url?: string
+    address?: string
+  }
+}
+
 export default function OrganizationsPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -99,8 +112,8 @@ export default function OrganizationsPage() {
         
         console.log('OrganizationsPage: Dados recebidos do Supabase:', data)
         
-        // Formatar os dados
-        const formattedData = data
+        // Formatar os dados - adicionando verificação de tipo
+        const formattedData = (data as UserOrgJoin[])
           .filter(item => item.organizations)
           .map(item => ({
             id: item.organizations.id,
@@ -199,10 +212,10 @@ export default function OrganizationsPage() {
               </CardHeader>
               
               <CardFooter className="flex justify-between">
-                <Link href={`/app/organizador/organizacoes/${org.slug}`}>
+                <Link href={`/app/organizador/organizacoes/${org.id}`}>
                   <Button variant="outline">Visualizar</Button>
                 </Link>
-                <Link href={`/app/organizador/organizacoes/${org.slug}/edit`}>
+                <Link href={`/app/organizador/organizacoes/${org.id}/edit`}>
                   <Button>Gerenciar</Button>
                 </Link>
               </CardFooter>
