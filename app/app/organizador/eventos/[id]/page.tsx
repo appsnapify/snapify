@@ -44,23 +44,20 @@ const event = {
   ]
 }
 
-type GenerateMetadataProps = {
-  params: { id: string };
-  searchParams?: Record<string, string | string[] | undefined>;
+type PageProps = {
+  params: Promise<{ id: string }>
+  searchParams?: { [key: string]: string | string[] | undefined }
 }
 
-export async function generateMetadata({ params }: GenerateMetadataProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const resolvedParams = await params
   return {
-    title: `Evento ${params.id} - Detalhes`,
+    title: `Evento ${resolvedParams.id} - Detalhes`,
   }
 }
 
-type PageProps = {
-  params: { id: string };
-  searchParams?: Record<string, string | string[] | undefined>;
-}
-
-export default function EventoDetalhesPage({ params }: PageProps) {
-  return <EventoDetalhesClient id={params.id} event={event} />
+export default async function EventoDetalhesPage({ params, searchParams }: PageProps) {
+  const resolvedParams = await params
+  return <EventoDetalhesClient id={resolvedParams.id} event={event} />
 }
 
