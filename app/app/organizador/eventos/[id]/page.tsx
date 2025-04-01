@@ -68,13 +68,11 @@ const event = {
   ]
 }
 
-type Props = {
-  params: {
-    id: string;
-  };
-}
-
-export default function EventoDetalhesPage({ params }: Props) {
+export default function EventoDetalhesPage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
