@@ -68,7 +68,14 @@ const event = {
   ]
 }
 
-export default function EventoDetalhesPage({ params }: { params: { id: string } }) {
+interface PageProps {
+  params: {
+    id: string;
+  };
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default function EventoDetalhesPage({ params }: PageProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
