@@ -13,14 +13,27 @@ import { createClient } from '@/lib/supabase'
 interface RawSupabaseData {
   organization_id: string
   role: string
-  organizations: {
+  organizations: Array<{
     id: string
     name: string
     slug: string
     logotipo: string | null
     banner_url: string | null
     address: string | null
-  }[]
+  }>
+}
+
+type SupabaseResponse = {
+  organization_id: any
+  role: any
+  organizations: Array<{
+    id: any
+    name: any
+    slug: any
+    logotipo: any
+    banner_url: any
+    address: any
+  }>
 }
 
 interface SupabaseOrganization {
@@ -119,11 +132,23 @@ export default function OrganizationsPage() {
         console.log('OrganizationsPage: Dados recebidos do Supabase:', data)
         
         // Formatar os dados com type safety
-        const formattedData = (data || [] as RawSupabaseData[])
-          .filter((item): item is RawSupabaseData => 
-            Array.isArray(item?.organizations) && 
-            item.organizations.length > 0 &&
-            typeof item.organizations[0]?.id === 'string')
+        const formattedData = (data || [] as SupabaseResponse[])
+          .filter((item): item is RawSupabaseData => {
+            if (!item?.organizations || !Array.isArray(item.organizations)) return false
+            if (item.organizations.length === 0) return false
+            
+            const org = item.organizations[0]
+            return (
+              typeof item.organization_id === 'string' &&
+              typeof item.role === 'string' &&
+              typeof org?.id === 'string' &&
+              typeof org?.name === 'string' &&
+              typeof org?.slug === 'string' &&
+              (org?.logotipo === null || typeof org?.logotipo === 'string') &&
+              (org?.banner_url === null || typeof org?.banner_url === 'string') &&
+              (org?.address === null || typeof org?.address === 'string')
+            )
+          })
           .map(item => ({
             id: item.organizations[0].id,
             name: item.organizations[0].name,
