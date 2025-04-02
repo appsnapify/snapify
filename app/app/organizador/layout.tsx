@@ -10,6 +10,17 @@ import { Button } from '@/components/ui/button'
 import { LogOut, Menu, X } from 'lucide-react'
 import { logout } from '@/lib/auth'
 import { toast } from 'sonner'
+import { buttonVariants } from '@/components/ui/button'
+import { Sidebar } from '@/components/ui/sidebar'
+import {
+  BadgePercent,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  QrCode,
+  TicketCheck
+} from 'lucide-react'
 
 interface NavItemProps {
   href: string
@@ -59,6 +70,14 @@ export default function OrganizadorLayout({
   const pathname = usePathname()
   const isCreatingOrg = pathname === '/app/organizador/organizacoes/nova'
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Links da barra lateral
+  const sidebarLinks = [
+    { href: '/app/organizador/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/app/organizador/eventos', label: 'Eventos', icon: CalendarDays },
+    { href: '/app/organizador/organizacoes', label: 'Organizações', icon: BadgePercent },
+    { href: '/app/organizador/eventos/checkin', label: 'Check-in', icon: QrCode },
+  ]
 
   // Função para fazer logout
   const handleLogout = async () => {
@@ -133,6 +152,13 @@ export default function OrganizadorLayout({
               disabled={!hasOrganizations}
             >
               Bilheteria
+            </NavItem>
+            <NavItem 
+              href="/app/organizador/eventos/checkin" 
+              icon={<span>🔍</span>}
+              disabled={!hasOrganizations}
+            >
+              Check-in
             </NavItem>
             <NavItem 
               href="/app/organizador/equipes" 

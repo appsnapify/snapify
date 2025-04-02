@@ -34,7 +34,7 @@ interface ScanResult {
 
 interface Event {
   id: string
-  title: string
+  name: string
 }
 
 export default function CheckInPage() {
@@ -72,11 +72,11 @@ export default function CheckInPage() {
 
       try {
         const { data, error } = await supabase
-          .from('guest_list_events')
-          .select('id, title')
+          .from('events')
+          .select('id, name')
           .eq('organization_id', currentOrganization.id)
-          .eq('is_active', true)
-          .order('date', { ascending: true })
+          .eq('is_published', true)
+          .order('start_date', { ascending: true })
         
         if (error) {
           console.error('Erro ao buscar eventos:', error)
@@ -291,21 +291,21 @@ export default function CheckInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {events.length === 0 ? (
-              <p className="text-gray-500 col-span-full">Nenhum evento de guest list encontrado.</p>
-            ) : (
-              events.map(event => (
-                <Button
-                  key={event.id}
-                  variant={selectedEvent === event.id ? "default" : "outline"}
-                  className="justify-start overflow-hidden text-ellipsis whitespace-nowrap"
-                  onClick={() => setSelectedEvent(event.id)}
-                >
-                  {event.title}
-                </Button>
-              ))
-            )}
+          <div className="grid gap-2 mb-4">
+            <Label htmlFor="event">Selecione o Evento</Label>
+            <select
+              id="event"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={selectedEvent || ''}
+              onChange={e => setSelectedEvent(e.target.value)}
+            >
+              <option value="">-- Selecione um evento --</option>
+              {events.map(event => (
+                <option key={event.id} value={event.id}>
+                  {event.name}
+                </option>
+              ))}
+            </select>
           </div>
         </CardContent>
       </Card>
