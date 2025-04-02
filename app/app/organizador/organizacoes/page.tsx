@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/use-auth'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 
-interface Organization {
+interface SupabaseOrganization {
   id: string
   name: string
   slug: string
@@ -22,13 +22,13 @@ interface Organization {
 interface UserOrgJoin {
   organization_id: string
   role: string
-  organizations: Organization
+  organizations: SupabaseOrganization[]
 }
 
 export default function OrganizationsPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [organizations, setOrganizations] = useState<SupabaseOrganization[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -107,14 +107,17 @@ export default function OrganizationsPage() {
         
         // Formatar os dados com type safety
         const formattedData = (data || [])
-          .filter((item): item is UserOrgJoin => Boolean(item?.organizations))
+          .filter((item): item is UserOrgJoin => 
+            Array.isArray(item?.organizations) && 
+            item.organizations.length > 0 &&
+            typeof item.organizations[0]?.id === 'string')
           .map(item => ({
-            id: item.organizations.id,
-            name: item.organizations.name,
-            slug: item.organizations.slug,
-            logotipo: item.organizations.logotipo,
-            banner_url: item.organizations.banner_url,
-            address: item.organizations.address,
+            id: item.organizations[0].id,
+            name: item.organizations[0].name,
+            slug: item.organizations[0].slug,
+            logotipo: item.organizations[0].logotipo,
+            banner_url: item.organizations[0].banner_url,
+            address: item.organizations[0].address,
             role: item.role
           }))
         
