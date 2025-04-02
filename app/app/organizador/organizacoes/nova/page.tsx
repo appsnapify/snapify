@@ -91,7 +91,7 @@ export default function NewOrganizationPage() {
       console.log('Organização criada com sucesso:', data)
       
       toast.success('Organização criada com sucesso!')
-      router.push('/organizador/organizacoes')
+      router.push('/app/organizador/organizacoes')
     } catch (error) {
       console.error('Erro ao criar organização:', error)
       if (error instanceof Error) {
