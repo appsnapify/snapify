@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { StorageError } from '@supabase/storage-js'
 
 export async function uploadOrganizationImage(file: File, type: 'logo' | 'banner') {
   try {
@@ -49,8 +50,6 @@ export async function uploadOrganizationImage(file: File, type: 'logo' | 'banner
     if (uploadError) {
       console.error('Erro no upload:', uploadError)
       console.error('Mensagem:', uploadError.message)
-      console.error('Nome:', uploadError.name)
-      console.error('Stack:', uploadError.stack)
       throw new Error(`Erro ao fazer upload: ${uploadError.message}`)
     }
 
