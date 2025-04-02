@@ -57,14 +57,9 @@ export async function uploadOrganizationImage(file: File, type: 'logo' | 'banner
 
     // Gerar URL pública
     console.log('Obtendo URL pública...')
-    const { data: { publicUrl }, error: urlError } = supabase.storage
+    const { data: { publicUrl } } = supabase.storage
       .from(bucketId)
       .getPublicUrl(`${type}/${fileName}`)
-
-    if (urlError) {
-      console.error('Erro ao gerar URL:', urlError)
-      throw new Error(`Erro ao gerar URL pública: ${urlError.message}`)
-    }
 
     console.log('URL pública gerada:', publicUrl)
     return publicUrl
