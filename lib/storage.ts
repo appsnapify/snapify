@@ -48,10 +48,9 @@ export async function uploadOrganizationImage(file: File, type: 'logo' | 'banner
 
     if (uploadError) {
       console.error('Erro no upload:', uploadError)
-      console.error('Código:', uploadError.code)
       console.error('Mensagem:', uploadError.message)
-      console.error('Detalhes:', uploadError.details)
-      console.error('Dica:', uploadError.hint)
+      console.error('Nome:', uploadError.name)
+      console.error('Stack:', uploadError.stack)
       throw new Error(`Erro ao fazer upload: ${uploadError.message}`)
     }
 
