@@ -10,6 +10,19 @@ import { useAuth } from '@/hooks/use-auth'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 
+interface RawSupabaseData {
+  organization_id: string
+  role: string
+  organizations: {
+    id: string
+    name: string
+    slug: string
+    logotipo: string | null
+    banner_url: string | null
+    address: string | null
+  }[]
+}
+
 interface SupabaseOrganization {
   id: string
   name: string
@@ -106,8 +119,8 @@ export default function OrganizationsPage() {
         console.log('OrganizationsPage: Dados recebidos do Supabase:', data)
         
         // Formatar os dados com type safety
-        const formattedData = (data || [])
-          .filter((item): item is UserOrgJoin => 
+        const formattedData = (data || [] as RawSupabaseData[])
+          .filter((item): item is RawSupabaseData => 
             Array.isArray(item?.organizations) && 
             item.organizations.length > 0 &&
             typeof item.organizations[0]?.id === 'string')
@@ -115,9 +128,9 @@ export default function OrganizationsPage() {
             id: item.organizations[0].id,
             name: item.organizations[0].name,
             slug: item.organizations[0].slug,
-            logotipo: item.organizations[0].logotipo,
-            banner_url: item.organizations[0].banner_url,
-            address: item.organizations[0].address,
+            logotipo: item.organizations[0].logotipo || undefined,
+            banner_url: item.organizations[0].banner_url || undefined,
+            address: item.organizations[0].address || undefined,
             role: item.role
           }))
         
