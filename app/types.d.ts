@@ -7,8 +7,8 @@
 
 declare namespace NextJS {
   interface PageProps {
-    params: Promise<Record<string, string>>
-    searchParams: Promise<Record<string, string | string[] | undefined>>
+    params: { [key: string]: string }
+    searchParams: { [key: string]: string | string[] | undefined }
   }
 }
 
