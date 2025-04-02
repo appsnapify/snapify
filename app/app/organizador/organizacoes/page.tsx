@@ -22,14 +22,7 @@ interface Organization {
 interface UserOrgJoin {
   organization_id: string
   role: string
-  organizations: {
-    id: string
-    name: string
-    slug: string
-    logotipo?: string
-    banner_url?: string
-    address?: string
-  }
+  organizations: Organization
 }
 
 export default function OrganizationsPage() {
@@ -112,9 +105,9 @@ export default function OrganizationsPage() {
         
         console.log('OrganizationsPage: Dados recebidos do Supabase:', data)
         
-        // Formatar os dados - adicionando verificação de tipo
-        const formattedData = (data as UserOrgJoin[])
-          .filter(item => item.organizations)
+        // Formatar os dados com type safety
+        const formattedData = (data || [])
+          .filter((item): item is UserOrgJoin => Boolean(item?.organizations))
           .map(item => ({
             id: item.organizations.id,
             name: item.organizations.name,
