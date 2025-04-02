@@ -96,6 +96,34 @@ export async function getSession() {
   }
 }
 
+// Função para limpar tokens e forçar login novamente
+export async function resetSession() {
+  const supabase = createClient()
+  
+  try {
+    // Limpar qualquer sessão existente
+    await supabase.auth.signOut()
+    
+    // Limpar storage local
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('supabase.auth.token')
+      // Remover outros itens do localStorage relacionados ao Supabase
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('supabase.')) {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+    
+    console.log('Sessão limpa com sucesso')
+    return { success: true }
+  } catch (error) {
+    console.error('Erro ao resetar sessão:', error)
+    return { success: false, error }
+  }
+}
+
 // Aliases para manter compatibilidade
 export const logout = signOut
 export const getCurrentUser = getUser 

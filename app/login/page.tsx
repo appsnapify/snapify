@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Mail, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
+import { resetSession } from '@/lib/auth'
 
 interface FormData {
   email: string
@@ -24,6 +25,20 @@ export default function LoginPage() {
     email: '',
     password: ''
   })
+
+  // Efeito para limpar sessão quando há erro de autenticação
+  useEffect(() => {
+    const hasAuthError = new URLSearchParams(window.location.search).has('auth_error');
+    
+    if (hasAuthError) {
+      // Limpar URL
+      if (window.history && window.history.replaceState) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('auth_error');
+        window.history.replaceState({}, document.title, url.toString());
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,7 +61,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
-      <motion.div
+        <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
@@ -66,7 +81,7 @@ export default function LoginPage() {
               <Button variant="ghost" className="text-gray-600 hover:text-gray-800">
                 Voltar
               </Button>
-            </Link>
+          </Link>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -97,7 +112,7 @@ export default function LoginPage() {
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
-                </div>
+              </div>
                 <Input
                   id="password"
                   type="password"
@@ -135,8 +150,8 @@ export default function LoginPage() {
               </Link>
             </p>
           </div>
-        </div>
-      </motion.div>
+          </div>
+        </motion.div>
     </div>
   )
 }

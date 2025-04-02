@@ -15,8 +15,8 @@ interface Organization {
 
 interface OrganizationContextType {
   organizations: Organization[]
-  selectedOrganization: Organization | null
-  setSelectedOrganization: (org: Organization | null) => void
+  currentOrganization: Organization | null
+  setCurrentOrganization: (org: Organization | null) => void
   isLoading: boolean
   hasOrganizations: boolean
 }
@@ -26,12 +26,13 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(u
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
+  const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function loadOrganizations() {
       if (!user) {
+        console.log('OrganizationContext: Nenhum usuário logado')
         setIsLoading(false)
         return
       }
@@ -52,11 +53,12 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           throw userOrgsCheckError
         }
         
-        console.log('Relações de organizações encontradas:', userOrgsCheck.length)
+        console.log('Relações de organizações encontradas:', userOrgsCheck?.length || 0)
         
-        if (userOrgsCheck.length === 0) {
+        if (!userOrgsCheck || userOrgsCheck.length === 0) {
           console.log('Usuário não tem organizações associadas')
           setOrganizations([])
+          setCurrentOrganization(null)
           setIsLoading(false)
           return
         }
@@ -76,35 +78,46 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           throw orgsError
         }
         
-        console.log('Detalhes das organizações:', orgsData)
+        console.log('Detalhes das organizações:', orgsData?.length || 0, orgsData)
         
         if (orgsData && orgsData.length > 0) {
           setOrganizations(orgsData)
           
           // Se não há organização selecionada, selecione a primeira
-          if (!selectedOrganization) {
-            setSelectedOrganization(orgsData[0])
+          if (!currentOrganization) {
+            console.log('Selecionando a primeira organização:', orgsData[0].name, orgsData[0].id)
+            setCurrentOrganization(orgsData[0])
+          } else {
+            // Verificar se a organização atual ainda está na lista
+            const orgStillExists = orgsData.some(org => org.id === currentOrganization.id)
+            if (!orgStillExists) {
+              console.log('Organização atual não existe mais, selecionando a primeira:', orgsData[0].name)
+              setCurrentOrganization(orgsData[0])
+            }
           }
         } else {
           console.log('Nenhuma organização encontrada')
           setOrganizations([])
+          setCurrentOrganization(null)
         }
       } catch (error) {
         console.error('OrganizationContext: Erro ao carregar organizações:', error)
+        setOrganizations([])
+        setCurrentOrganization(null)
       } finally {
         setIsLoading(false)
       }
     }
     
     loadOrganizations()
-  }, [user]) // Removido selectedOrganization da dependência para evitar loops
+  }, [user, currentOrganization?.id]) // Adicionando apenas o ID para evitar loops de renderização
 
   return (
     <OrganizationContext.Provider
       value={{
         organizations,
-        selectedOrganization,
-        setSelectedOrganization,
+        currentOrganization,
+        setCurrentOrganization,
         isLoading,
         hasOrganizations: organizations.length > 0
       }}

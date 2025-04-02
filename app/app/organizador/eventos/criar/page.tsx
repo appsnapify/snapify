@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,7 +66,10 @@ const guestListFormSchema = z.object({
 
 export default function CriarEventoPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const eventId = searchParams.get('id')
   const [isLoading, setIsLoading] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(!!eventId)
   const [eventType, setEventType] = useState<'tickets' | 'guestlist'>('tickets')
   const [flyerPreview, setFlyerPreview] = useState<string | null>(null)
   const { currentOrganization } = useOrganization()
@@ -93,21 +96,174 @@ export default function CriarEventoPage() {
     },
   })
 
+  // Função para carregar os dados do evento para edição
+  useEffect(() => {
+    async function loadEventData() {
+      if (eventId && currentOrganization) {
+        setIsLoading(true)
+        try {
+          // Buscar dados do evento no Supabase
+          const { data: event, error } = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', eventId)
+            .eq('organization_id', currentOrganization.id)
+            .single()
+
+          if (error) {
+            throw new Error(`Erro ao carregar evento: ${error.message}`)
+          }
+
+          if (!event) {
+            throw new Error('Evento não encontrado')
+          }
+
+          console.log("Evento carregado para edição:", event)
+
+          // Definir o tipo de evento
+          if (event.type === 'guest-list') {
+            setEventType('guestlist')
+            
+            // Preencher o formulário de guest list
+            guestListForm.setValue('title', event.title || '')
+            guestListForm.setValue('description', event.description || '')
+            
+            // Converter a data e hora do formato do banco
+            if (event.date) {
+              const dateParts = event.date.split('-')
+              const date = new Date(
+                parseInt(dateParts[0]), 
+                parseInt(dateParts[1]) - 1, 
+                parseInt(dateParts[2])
+              )
+              guestListForm.setValue('date', date)
+            }
+            
+            guestListForm.setValue('time', event.time || '')
+            guestListForm.setValue('location', event.location || '')
+            
+            // Mostrar preview do flyer se existir
+            if (event.flyer_url) {
+              setFlyerPreview(event.flyer_url)
+            }
+          } else {
+            setEventType('tickets')
+            
+            // Preencher o formulário de tickets
+            ticketsForm.setValue('title', event.title || '')
+            ticketsForm.setValue('description', event.description || '')
+            
+            // Converter a data e hora do formato do banco
+            if (event.date) {
+              const dateParts = event.date.split('-')
+              const date = new Date(
+                parseInt(dateParts[0]), 
+                parseInt(dateParts[1]) - 1, 
+                parseInt(dateParts[2])
+              )
+              ticketsForm.setValue('date', date)
+            }
+            
+            ticketsForm.setValue('time', event.time || '')
+            ticketsForm.setValue('location', event.location || '')
+            
+            // Tentar extrair totalTickets e price de algum lugar (se existirem)
+            if (event.ticket_settings) {
+              try {
+                const ticketSettings = JSON.parse(event.ticket_settings)
+                ticketsForm.setValue('totalTickets', ticketSettings.total || 100)
+                ticketsForm.setValue('price', ticketSettings.price || 0)
+              } catch (e) {
+                console.error("Erro ao processar configurações de ticket:", e)
+              }
+            }
+          }
+        } catch (error) {
+          console.error(error)
+          toast({
+            title: "Erro ao carregar evento",
+            description: error instanceof Error ? error.message : "Não foi possível carregar os dados do evento",
+            variant: "destructive"
+          })
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadEventData()
+  }, [eventId, currentOrganization, ticketsForm, guestListForm])
+
   const onSubmitTickets = async (values: z.infer<typeof ticketsFormSchema>) => {
+    if (!currentOrganization) {
+      toast({
+        title: "Erro ao criar evento",
+        description: "Nenhuma organização selecionada.",
+        variant: "destructive"
+      })
+      return
+    }
+    
     setIsLoading(true)
     try {
-      // Aqui seria a chamada para a API para criar o evento de bilhetes
-      console.log('Ticket event values:', values)
-      toast({
-        title: "Evento criado com sucesso!",
-        description: "Seu evento de bilhetes foi criado."
-      })
+      const eventData = {
+        organization_id: currentOrganization.id,
+        title: values.title,
+        description: values.description,
+        location: values.location,
+        date: values.date.toISOString().split('T')[0],
+        time: values.time,
+        is_active: true,
+        type: 'regular',
+        ticket_settings: JSON.stringify({
+          total: values.totalTickets,
+          price: values.price
+        })
+      }
+      
+      let result;
+      
+      if (isEditMode && eventId) {
+        // Atualizar evento existente
+        const { data, error } = await supabase
+          .from('events')
+          .update(eventData)
+          .eq('id', eventId)
+          .eq('organization_id', currentOrganization.id)
+          .select()
+          .single()
+          
+        if (error) throw new Error(`Erro ao atualizar evento: ${error.message}`)
+        result = data
+        
+        toast({
+          title: "Evento atualizado com sucesso!",
+          description: "As alterações foram salvas."
+        })
+      } else {
+        // Criar novo evento
+        const { data, error } = await supabase
+          .from('events')
+          .insert(eventData)
+          .select()
+          .single()
+          
+        if (error) throw new Error(`Erro ao criar evento: ${error.message}`)
+        result = data
+        
+        toast({
+          title: "Evento criado com sucesso!",
+          description: "Seu evento foi criado."
+        })
+      }
+      
+      console.log("Evento salvo:", result)
       router.push('/app/organizador/eventos')
     } catch (error) {
       console.error(error)
       toast({
-        title: "Erro ao criar evento",
-        description: "Ocorreu um erro ao criar o evento. Tente novamente.",
+        title: "Erro ao salvar evento",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao salvar o evento. Tente novamente.",
         variant: "destructive"
       })
     } finally {
@@ -125,57 +281,89 @@ export default function CriarEventoPage() {
       return
     }
 
-    console.log("Iniciando criação de evento guest list", { values, organization: currentOrganization.id });
+    console.log("Iniciando " + (isEditMode ? "atualização" : "criação") + " de evento guest list", { values, organization: currentOrganization.id });
     setIsLoading(true)
     try {
-      // Fazer upload do flyer para o Storage
-      const flyerFile = values.flyer[0]
-      const fileExt = flyerFile.name.split('.').pop()
-      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`
-      const filePath = `guest-list-flyers/${fileName}`
+      let flyerUrl = null;
       
-      console.log("Iniciando upload do flyer", { fileName, filePath });
-      
-      // Verificar se o bucket existe
-      const { data: buckets } = await supabase
-        .storage
-        .listBuckets();
-      
-      console.log("Buckets disponíveis:", buckets);
-      
-      // Se o bucket 'event-images' não existir, usar 'images' ou outro bucket disponível
-      let bucketName = 'event-images';
-      if (buckets && !buckets.find(b => b.name === 'event-images')) {
-        // Tenta usar o primeiro bucket disponível
-        if (buckets.length > 0) {
-          bucketName = buckets[0].name;
-          console.log(`Bucket 'event-images' não encontrado. Usando bucket alternativo: ${bucketName}`);
+      // Só fazemos upload do flyer se houver um novo arquivo ou se estivermos criando um novo evento
+      if (!isEditMode || (values.flyer && values.flyer.length > 0)) {
+        // Se estivermos no modo de edição e não tiver novo flyer, manter o atual
+        if (isEditMode && (!values.flyer || values.flyer.length === 0)) {
+          flyerUrl = flyerPreview;
         } else {
-          throw new Error("Nenhum bucket de armazenamento disponível. Contate o administrador.");
+          // Fazer upload do novo flyer
+          const flyerFile = values.flyer[0]
+          const fileExt = flyerFile.name.split('.').pop()
+          const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+          const filePath = `guest-list-flyers/${fileName}`
+          
+          console.log("Iniciando upload do flyer", { fileName, filePath });
+          
+          // Verificar se o bucket existe
+          const { data: buckets } = await supabase
+            .storage
+            .listBuckets();
+          
+          console.log("Buckets disponíveis:", buckets);
+          
+          // Ver se temos algum bucket disponível
+          if (buckets && buckets.length > 0) {
+            // Usar o primeiro bucket disponível
+            const bucketName = buckets[0].name;
+            console.log(`Usando bucket disponível: ${bucketName}`);
+            
+            // Fazer o upload
+            const { error: uploadError, data: uploadData } = await supabase
+              .storage
+              .from(bucketName)
+              .upload(filePath, flyerFile, {
+                cacheControl: '3600',
+                upsert: true
+              })
+            
+            if (uploadError) {
+              console.error("Erro no upload:", uploadError);
+              // Continuar mesmo com erro de upload, usar base64 como fallback
+              const reader = new FileReader();
+              const imageDataPromise = new Promise((resolve) => {
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(flyerFile);
+              });
+              
+              flyerUrl = await imageDataPromise as string;
+              console.log("Usando image data URL como fallback após erro de upload");
+            } else {
+              console.log("Upload concluído com sucesso", uploadData);
+              
+              // Obter URL pública do flyer
+              const { data: urlData } = supabase
+                .storage
+                .from(bucketName)
+                .getPublicUrl(filePath)
+              
+              console.log("URL pública do flyer:", urlData);
+              flyerUrl = urlData?.publicUrl;
+            }
+          } else {
+            console.log("Nenhum bucket disponível. Usando alternativa.");
+            // Usar dataURL como fallback
+            const reader = new FileReader();
+            const imageDataPromise = new Promise((resolve) => {
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(flyerFile);
+            });
+            
+            flyerUrl = await imageDataPromise as string;
+            console.log("Usando image data URL como fallback (sem buckets)");
+          }
         }
+      } else if (isEditMode) {
+        // Manter o flyer atual se estivermos editando
+        flyerUrl = flyerPreview;
       }
       
-      const { error: uploadError, data: uploadData } = await supabase
-        .storage
-        .from(bucketName)
-        .upload(filePath, flyerFile)
-      
-      if (uploadError) {
-        console.error("Erro no upload:", uploadError);
-        throw new Error(`Erro ao fazer upload do flyer: ${uploadError.message}`)
-      }
-      
-      console.log("Upload concluído com sucesso", uploadData);
-      
-      // Obter URL pública do flyer
-      const { data: urlData } = supabase
-        .storage
-        .from(bucketName)
-        .getPublicUrl(filePath)
-      
-      console.log("URL pública do flyer:", urlData);
-      
-      // Criar o evento no banco de dados
+      // Criar ou atualizar o evento no banco de dados
       const isoDate = values.date.toISOString()
       
       const eventData = {
@@ -183,39 +371,68 @@ export default function CriarEventoPage() {
         title: values.title,
         description: values.description,
         location: values.location,
-        date: isoDate,
+        date: isoDate.split('T')[0], // Extrair apenas a data
         time: values.time,
-        flyer_url: urlData?.publicUrl,
-        is_active: true
+        flyer_url: flyerUrl,
+        is_active: true,
+        type: 'guest-list'
       };
       
       console.log("Dados do evento a serem salvos:", eventData);
       
-      const { data: event, error: eventError } = await supabase
-        .from('guest_list_events')
-        .insert(eventData)
-        .select()
-        .single()
+      let result;
       
-      if (eventError) {
-        console.error("Erro ao inserir evento:", eventError);
-        throw new Error(`Erro ao criar evento: ${eventError.message}`)
+      if (isEditMode && eventId) {
+        // Atualizar evento existente
+        const { data, error } = await supabase
+          .from('events')
+          .update(eventData)
+          .eq('id', eventId)
+          .eq('organization_id', currentOrganization.id)
+          .select()
+          .single()
+          
+        if (error) {
+          console.error("Erro ao atualizar evento:", error);
+          throw new Error(`Erro ao atualizar evento: ${error.message}`)
+        }
+        
+        result = data;
+        
+        toast({
+          title: "Guest List atualizada!",
+          description: "Seu evento com guest list foi atualizado com sucesso."
+        })
+      } else {
+        // Criar novo evento
+        const { data, error } = await supabase
+          .from('events')
+          .insert(eventData)
+          .select()
+          .single()
+          
+        if (error) {
+          console.error("Erro ao inserir evento:", error);
+          throw new Error(`Erro ao criar evento: ${error.message}`)
+        }
+        
+        result = data;
+        
+        toast({
+          title: "Evento Guest List criado!",
+          description: "Seu evento com guest list foi criado com sucesso."
+        })
       }
       
-      console.log("Evento criado com sucesso:", event);
-      
-      toast({
-        title: "Evento Guest List criado!",
-        description: "Seu evento com guest list foi criado com sucesso."
-      })
+      console.log("Evento salvo com sucesso:", result);
       
       // Redirecionar para a página do evento ou lista de eventos
       router.push('/app/organizador/eventos')
     } catch (error) {
       console.error("Erro completo:", error)
       toast({
-        title: "Erro ao criar evento",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao criar o evento. Tente novamente.",
+        title: "Erro ao salvar evento",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao salvar o evento. Tente novamente.",
         variant: "destructive"
       })
     } finally {
@@ -240,14 +457,16 @@ export default function CriarEventoPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Criar Evento</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isEditMode ? 'Editar Evento' : 'Criar Evento'}
+        </h1>
         <p className="text-gray-500">
-          Preencha os detalhes do seu evento
+          {isEditMode ? 'Atualize os detalhes do seu evento' : 'Preencha os detalhes do seu evento'}
         </p>
       </div>
 
       <Card className="p-6">
-        <Tabs defaultValue="tickets" onValueChange={(value) => setEventType(value as 'tickets' | 'guestlist')}>
+        <Tabs defaultValue={eventType} onValueChange={(value) => setEventType(value as 'tickets' | 'guestlist')}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="tickets">Bilhetes</TabsTrigger>
             <TabsTrigger value="guestlist">Guest List</TabsTrigger>
@@ -409,7 +628,7 @@ export default function CriarEventoPage() {
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isLoading}>
-                    {isLoading ? 'Criando...' : 'Criar Evento com Bilhetes'}
+                    {isLoading ? 'Salvando...' : isEditMode ? 'Salvar Alterações' : 'Criar Evento com Bilhetes'}
                   </Button>
                 </div>
               </form>
@@ -568,7 +787,7 @@ export default function CriarEventoPage() {
                     Cancelar
                   </Button>
                   <Button type="submit" disabled={isLoading}>
-                    {isLoading ? 'Criando...' : 'Criar Guest List'}
+                    {isLoading ? 'Salvando...' : isEditMode ? 'Salvar Alterações' : 'Criar Guest List'}
                   </Button>
                 </div>
               </form>

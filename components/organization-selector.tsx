@@ -13,7 +13,7 @@ import {
 
 export function OrganizationSelector() {
   const router = useRouter()
-  const { organizations, selectedOrganization, setSelectedOrganization } = useOrganization()
+  const { organizations, currentOrganization, setCurrentOrganization } = useOrganization()
 
   if (!organizations || organizations.length === 0) {
     return null
@@ -21,17 +21,17 @@ export function OrganizationSelector() {
 
   return (
     <Select
-      value={selectedOrganization?.id}
+      value={currentOrganization?.id}
       onValueChange={(value) => {
         const org = organizations.find((org) => org.id === value)
         if (org) {
-          setSelectedOrganization(org)
+          setCurrentOrganization(org)
         }
       }}
     >
       <SelectTrigger className="w-[200px]">
         <SelectValue placeholder="Selecione uma organização">
-          {selectedOrganization?.name || 'Selecione uma organização'}
+          {currentOrganization?.name || 'Selecione uma organização'}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>

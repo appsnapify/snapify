@@ -1,10 +1,16 @@
 import { Metadata } from 'next'
 import { supabase } from '@/lib/supabase';
-import DbTester from '../DbTester';
-import { CalendarIcon, MapPinIcon, ClockIcon, UsersIcon, ArrowLeftIcon } from 'lucide-react';
+import { CalendarIcon, MapPinIcon, ArrowLeftIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
+
+// Importe dinâmico do componente ClientDiagnostic
+const ClientDiagnostic = dynamic(() => import('./ClientDiagnostic'), {
+  ssr: false,
+  loading: () => <div className="p-4 bg-slate-50 rounded-md">Carregando ferramenta de diagnóstico...</div>
+});
 
 interface PageProps {
   params: { id: string }
@@ -48,14 +54,14 @@ export default async function EventoDetalhesPage({ params }: PageProps) {
       <div className="p-4 bg-red-50 text-red-800 rounded-md">
         <h2 className="text-lg font-semibold mb-2">Erro</h2>
         <p>{errorMessage}</p>
-        <Button 
-          variant="outline" 
-          className="mt-4"
-          onClick={() => window.history.back()}
-        >
-          <ArrowLeftIcon className="w-4 h-4 mr-2" />
-          Voltar
-        </Button>
+        <div className="mt-4">
+          <a href="/app/organizador/eventos" className="inline-flex items-center">
+            <Button variant="outline">
+              <ArrowLeftIcon className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+          </a>
+        </div>
       </div>
     );
   }
@@ -65,14 +71,14 @@ export default async function EventoDetalhesPage({ params }: PageProps) {
       <div className="p-4 bg-amber-50 text-amber-800 rounded-md">
         <h2 className="text-lg font-semibold mb-2">Evento não encontrado</h2>
         <p>O evento solicitado não foi encontrado.</p>
-        <Button 
-          variant="outline" 
-          className="mt-4"
-          onClick={() => window.history.back()}
-        >
-          <ArrowLeftIcon className="w-4 h-4 mr-2" />
-          Voltar
-        </Button>
+        <div className="mt-4">
+          <a href="/app/organizador/eventos" className="inline-flex items-center">
+            <Button variant="outline">
+              <ArrowLeftIcon className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+          </a>
+        </div>
       </div>
     );
   }
@@ -87,15 +93,14 @@ export default async function EventoDetalhesPage({ params }: PageProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => window.history.back()}
-            className="mb-2"
-          >
-            <ArrowLeftIcon className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
+          <div className="mb-2">
+            <a href="/app/organizador/eventos" className="inline-flex items-center">
+              <Button variant="outline" size="sm">
+                <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                Voltar
+              </Button>
+            </a>
+          </div>
           <h1 className="text-2xl font-bold">{event.title}</h1>
           <p className="text-gray-500">{event.type === 'guest-list' ? 'Guest List' : 'Evento'}</p>
         </div>
@@ -135,40 +140,25 @@ export default async function EventoDetalhesPage({ params }: PageProps) {
               </p>
               
               <div className="flex space-x-2">
-                <Button 
-                  variant="outline"
-                  onClick={() => window.location.href = `/app/organizador/eventos/checkin?event=${params.id}`}
-                >
-                  Check-in
-                </Button>
-                <Button 
-                  onClick={() => window.location.href = `/g/${params.id}`}
-                  variant="default"
-                >
-                  Ver página pública
-                </Button>
+                <a href={`/app/organizador/eventos/checkin?event=${params.id}`}>
+                  <Button variant="outline">Check-in</Button>
+                </a>
+                <a href={`/g/${params.id}`}>
+                  <Button variant="default">Ver página pública</Button>
+                </a>
               </div>
             </CardContent>
           </Card>
         )}
       </div>
 
-      {/* Ferramenta de diagnóstico de dados */}
+      {/* Ferramenta de diagnóstico de dados - com carregamento preguiçoso */}
       {event.type === 'guest-list' && (
-        <Suspense fallback={<div>Carregando diagnóstico...</div>}>
+        <Suspense fallback={<div className="p-4 bg-slate-50 rounded-md">Carregando diagnóstico...</div>}>
           <ClientDiagnostic eventId={params.id} />
         </Suspense>
       )}
     </div>
   );
-}
-
-// Componente cliente para renderizar a ferramenta de diagnóstico
-'use client';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-
-function ClientDiagnostic({ eventId }: { eventId: string }) {
-  return <DbTester eventId={eventId} />;
 }
 

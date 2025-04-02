@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,7 +14,7 @@ export default function DbTester({ eventId }: { eventId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [eventIdInput, setEventIdInput] = useState(eventId || '');
 
-  const checkDatabase = async () => {
+  const checkDatabase = useCallback(async () => {
     if (!eventIdInput) {
       toast({
         title: "ID do evento é obrigatório",
@@ -77,7 +77,7 @@ export default function DbTester({ eventId }: { eventId: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventIdInput]);
 
   const formatValue = (value: any) => {
     if (value === null || value === undefined) return 'null';
@@ -144,115 +144,127 @@ export default function DbTester({ eventId }: { eventId: string }) {
                   } convidados</p>
                 </div>
               </TabsContent>
-              <TabsContent value="guests">
-                <div className="bg-slate-100 p-4 rounded-md overflow-auto max-h-96">
-                  <h3 className="font-semibold mb-2">Dados da tabela guests</h3>
-                  {data.tables.guests?.error ? (
-                    <p className="text-red-500">{data.tables.guests.error}</p>
-                  ) : data.tables.guests?.data?.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            {Object.keys(data.tables.guests.data[0]).map(key => (
-                              <th key={key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {key}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {data.tables.guests.data.map((guest: any, index: number) => (
-                            <tr key={index}>
-                              {Object.values(guest).map((value: any, valueIndex: number) => (
-                                <td key={valueIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">
-                                  {formatValue(value)}
-                                </td>
+              
+              {/* Renderização condicional para evitar erros */}
+              {data.tables.guests?.data && (
+                <TabsContent value="guests">
+                  <div className="bg-slate-100 p-4 rounded-md overflow-auto max-h-96">
+                    <h3 className="font-semibold mb-2">Dados da tabela guests</h3>
+                    {data.tables.guests?.error ? (
+                      <p className="text-red-500">{data.tables.guests.error}</p>
+                    ) : data.tables.guests?.data?.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              {Object.keys(data.tables.guests.data[0]).map(key => (
+                                <th key={key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  {key}
+                                </th>
                               ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p>Nenhum dado encontrado na tabela guests.</p>
-                  )}
-                </div>
-              </TabsContent>
-              <TabsContent value="glguests">
-                <div className="bg-slate-100 p-4 rounded-md overflow-auto max-h-96">
-                  <h3 className="font-semibold mb-2">Dados da tabela guest_list_guests</h3>
-                  {data.tables.guest_list_guests?.error ? (
-                    <p className="text-red-500">{data.tables.guest_list_guests.error}</p>
-                  ) : data.tables.guest_list_guests?.data?.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            {Object.keys(data.tables.guest_list_guests.data[0]).map(key => (
-                              <th key={key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {key}
-                              </th>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {data.tables.guests.data.map((guest: any, index: number) => (
+                              <tr key={index}>
+                                {Object.values(guest).map((value: any, valueIndex: number) => (
+                                  <td key={valueIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">
+                                    {formatValue(value)}
+                                  </td>
+                                ))}
+                              </tr>
                             ))}
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {data.tables.guest_list_guests.data.map((guest: any, index: number) => (
-                            <tr key={index}>
-                              {Object.values(guest).map((value: any, valueIndex: number) => (
-                                <td key={valueIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">
-                                  {formatValue(value)}
-                                </td>
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p>Nenhum dado encontrado na tabela guests.</p>
+                    )}
+                  </div>
+                </TabsContent>
+              )}
+              
+              {/* Renderização condicional para evitar erros */}
+              {data.tables.guest_list_guests?.data && (
+                <TabsContent value="glguests">
+                  <div className="bg-slate-100 p-4 rounded-md overflow-auto max-h-96">
+                    <h3 className="font-semibold mb-2">Dados da tabela guest_list_guests</h3>
+                    {data.tables.guest_list_guests?.error ? (
+                      <p className="text-red-500">{data.tables.guest_list_guests.error}</p>
+                    ) : data.tables.guest_list_guests?.data?.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              {Object.keys(data.tables.guest_list_guests.data[0]).map(key => (
+                                <th key={key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  {key}
+                                </th>
                               ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p>Nenhum dado encontrado na tabela guest_list_guests.</p>
-                  )}
-                </div>
-              </TabsContent>
-              <TabsContent value="permissions">
-                <div className="bg-slate-100 p-4 rounded-md overflow-auto max-h-96">
-                  <h3 className="font-semibold mb-2">Permissões RLS</h3>
-                  {data.tables.permissions?.error ? (
-                    <p className="text-red-500">{data.tables.permissions.error}</p>
-                  ) : data.tables.permissions?.data?.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tabela</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anon Select</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Auth Select</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {data.tables.permissions.data.map((perm: any, index: number) => (
-                            <tr key={index}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{perm.tablename}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <span className={perm.anon_select ? "text-green-500" : "text-red-500"}>
-                                  {perm.anon_select ? "Sim" : "Não"}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <span className={perm.auth_select ? "text-green-500" : "text-red-500"}>
-                                  {perm.auth_select ? "Sim" : "Não"}
-                                </span>
-                              </td>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {data.tables.guest_list_guests.data.map((guest: any, index: number) => (
+                              <tr key={index}>
+                                {Object.values(guest).map((value: any, valueIndex: number) => (
+                                  <td key={valueIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">
+                                    {formatValue(value)}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p>Nenhum dado encontrado na tabela guest_list_guests.</p>
+                    )}
+                  </div>
+                </TabsContent>
+              )}
+              
+              {/* Renderização condicional para evitar erros */}
+              {data.tables.permissions?.data && (
+                <TabsContent value="permissions">
+                  <div className="bg-slate-100 p-4 rounded-md overflow-auto max-h-96">
+                    <h3 className="font-semibold mb-2">Permissões RLS</h3>
+                    {data.tables.permissions?.error ? (
+                      <p className="text-red-500">{data.tables.permissions.error}</p>
+                    ) : data.tables.permissions?.data?.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tabela</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Anon Select</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Auth Select</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p>Não foi possível verificar as permissões.</p>
-                  )}
-                </div>
-              </TabsContent>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {data.tables.permissions.data.map((perm: any, index: number) => (
+                              <tr key={index}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{perm.tablename}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                  <span className={perm.anon_select ? "text-green-500" : "text-red-500"}>
+                                    {perm.anon_select ? "Sim" : "Não"}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                  <span className={perm.auth_select ? "text-green-500" : "text-red-500"}>
+                                    {perm.auth_select ? "Sim" : "Não"}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p>Nenhum dado encontrado sobre permissões.</p>
+                    )}
+                  </div>
+                </TabsContent>
+              )}
             </Tabs>
           )}
         </div>
