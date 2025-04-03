@@ -11,86 +11,87 @@ interface Html5QrScannerProps {
 export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
+  
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const scannerId = 'html5-qr-code-scanner';
-    const createScanner = async () => {
+    // Criar e inicializar o scanner
+    const initializeScanner = async () => {
+      if (!containerRef.current) return;
+    
       try {
-        // Verificar se já existe um elemento com este ID para evitar duplicações
+        // Identificador único para o scanner
+        const scannerId = 'html5-qr-code-scanner';
+        
+        // Limpar qualquer scanner existente
         if (document.getElementById(scannerId)) {
-          const element = document.getElementById(scannerId);
-          if (element) element.remove();
+          document.getElementById(scannerId)?.remove();
         }
-
-        // Criar novo container
+        
+        // Criar novo container para o scanner
         const container = document.createElement('div');
         container.id = scannerId;
-        containerRef.current?.appendChild(container);
-
-        // Inicializar scanner
-        const scanner = new Html5Qrcode(scannerId);
-        scannerRef.current = scanner;
-
-        console.log('Iniciando scanner de câmera');
-        await scanner.start(
-          { facingMode: 'environment' },
+        containerRef.current.appendChild(container);
+        
+        // Inicializar o scanner
+        console.log("Iniciando scanner de QR code...");
+        scannerRef.current = new Html5Qrcode(scannerId);
+        
+        // Iniciar a câmera com configurações simples
+        await scannerRef.current.start(
+          { facingMode: 'environment' },  // Usar câmera traseira quando disponível
           {
-            fps: 15,
-            qrbox: { width: 300, height: 300 },
-            aspectRatio: 1.0,
-            disableFlip: false,
-            experimentalFeatures: {
-              useBarCodeDetectorIfSupported: true
-            }
+            fps: 10,
+            qrbox: 250,
           },
           (decodedText) => {
-            console.log(`QR Code detectado: ${decodedText}`);
-            const cleanedText = decodedText.trim();
-            onScan({ text: cleanedText });
+            console.log("QR Code detectado:", decodedText);
+            onScan({ text: decodedText.trim() });
           },
           (errorMessage) => {
-            console.log(`Erro no scanner (não crítico): ${errorMessage}`);
+            // Ignorar erros não críticos durante o scanning
           }
-        ).catch(err => {
-          console.error('Erro ao iniciar scanner:', err);
-          if (onError) onError(err);
-        });
+        );
+        
+        console.log("Scanner QR iniciado com sucesso");
       } catch (error) {
-        console.error('Erro ao inicializar scanner:', error);
+        console.error("Erro ao inicializar scanner de QR code:", error);
         if (onError) onError(error);
       }
     };
-
-    createScanner();
-
-    // Cleanup: parar o scanner ao desmontar o componente
+    
+    initializeScanner();
+    
+    // Cleanup ao desmontar
     return () => {
-      console.log('Parando scanner de QR code...');
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current
-          .stop()
-          .then(() => console.log('Scanner parado com sucesso'))
-          .catch(err => console.error('Erro ao parar scanner:', err));
+      if (scannerRef.current) {
+        try {
+          scannerRef.current.stop()
+            .then(() => console.log("Scanner QR parado com sucesso"))
+            .catch(err => console.error("Erro ao parar scanner:", err));
+        } catch (err) {
+          console.error("Erro ao tentar parar scanner:", err);
+        }
       }
     };
   }, [onScan, onError]);
-
+  
   return (
     <div className="qr-scanner-container">
-      <div ref={containerRef} className="scanner-area">
-        {/* O scanner será renderizado aqui */}
-      </div>
+      <div ref={containerRef} className="scanner-area" />
+      
       <style jsx>{`
         .qr-scanner-container {
           width: 100%;
-          min-height: 400px;
+          min-height: 350px;
           position: relative;
         }
+        
         .scanner-area {
           width: 100%;
           height: 100%;
+          min-height: 350px;
+          background-color: #f5f5f5;
+          border-radius: 8px;
+          overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;

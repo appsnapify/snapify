@@ -17,9 +17,11 @@ import dynamic from 'next/dynamic'
 // Componente HTML5 QR Code Scanner que será carregado apenas no cliente
 const Html5QrcodeScanner = dynamic(() => import('./Html5QrScanner').catch(err => {
   console.error("Erro ao importar HTML5QrcodeScanner:", err);
+  toast.error("Não foi possível carregar o scanner de QR code. Tente novamente ou use o modo manual.");
   return () => (
-    <div className="bg-red-50 p-4 rounded-md">
-      <p className="text-red-500">Erro ao carregar o scanner. Use o modo manual.</p>
+    <div className="bg-red-50 p-4 rounded-lg">
+      <p className="text-red-500 font-medium">Erro ao carregar o scanner. Use o modo manual.</p>
+      <p className="text-sm mt-2">Erro técnico: {err?.message || 'Erro desconhecido'}</p>
     </div>
   );
 }), { ssr: false });
@@ -63,6 +65,7 @@ export default function CheckInPage() {
   const [error, setError] = useState<string | null>(null)
   const [event, setEvent] = useState<Event | null>(null)
   const [guests, setGuests] = useState<{ id: string; name: string; phone: string; checked_in: boolean; check_in_time: string | null }[]>([])
+  const [usingScan, setUsingScan] = useState(false)
   
   // Extrair o evento da URL, se houver
   useEffect(() => {
@@ -216,14 +219,79 @@ export default function CheckInPage() {
     }
   }, [selectedEvent])
 
-  const startScanning = () => {
-    console.log("Iniciando scanner");
-    setScanning(true)
-    setScanMode('camera')
-    // Limpar resultado anterior
-    setLastResult(null)
-    setManualCode('')
-  }
+  const startScanning = async () => {
+    console.log("Iniciando scanner de QR code...");
+    setLastResult(null);
+    setManualCode('');
+    
+    // Verificar suporte e permissões
+    try {
+      // Verificar se a API de mídia é suportada
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error("API MediaDevices não suportada neste navegador");
+        toast({
+          title: "Erro",
+          description: "Seu navegador não suporta acesso à câmera. Use o modo manual.",
+          variant: "destructive"
+        });
+        setScanMode('manual');
+        return;
+      }
+      
+      // Tentar acessar a câmera para verificar permissões antes de iniciar o scanner
+      toast({
+        title: "Aguarde",
+        description: "Solicitando acesso à câmera...",
+      });
+      
+      await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment' // Preferir câmera traseira
+        } 
+      });
+      
+      toast({
+        title: "Sucesso",
+        description: "Câmera ativada com sucesso!",
+      });
+      
+      // Se chegou aqui, podemos iniciar o scanner
+      setScanning(true);
+      
+    } catch (error: any) {
+      console.error("Erro ao acessar câmera:", error);
+      
+      // Fornecer mensagens específicas com base no tipo de erro
+      if (error.name === "NotAllowedError") {
+        toast({
+          title: "Permissão negada",
+          description: "Você precisa permitir o acesso à câmera para usar o scanner. Verifique as permissões do seu navegador.",
+          variant: "destructive"
+        });
+      } else if (error.name === "NotFoundError") {
+        toast({
+          title: "Câmera não encontrada",
+          description: "Não foi possível encontrar uma câmera no seu dispositivo.",
+          variant: "destructive"
+        });
+      } else if (error.name === "NotReadableError") {
+        toast({
+          title: "Câmera indisponível",
+          description: "A câmera pode estar sendo usada por outro aplicativo. Feche outros aplicativos que possam estar usando a câmera.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro na câmera",
+          description: `Erro ao acessar câmera: ${error.message || 'Erro desconhecido'}`,
+          variant: "destructive"
+        });
+      }
+      
+      // Mudar para modo manual se houver erro
+      setScanMode('manual');
+    }
+  };
 
   const stopScanning = () => {
     console.log("Parando scanner");
@@ -478,6 +546,22 @@ export default function CheckInPage() {
     }
   }
 
+  const handleScanError = (error: any) => {
+    console.error("Erro no scanner:", error);
+    
+    // Feedback específico baseado no tipo de erro
+    if (error.name === "NotAllowedError") {
+      toast.error("Permissão para acessar a câmera foi negada");
+    } else if (error.name === "NotFoundError") {
+      toast.error("Nenhuma câmera encontrada");
+    } else {
+      toast.error(`Erro no scanner: ${error.message || 'Erro desconhecido'}`);
+    }
+    
+    // Mudar para modo manual em caso de falha no scanner
+    setScanMode('manual');
+  };
+
   const formatTime = (dateString: string | null) => {
     if (!dateString) return 'N/A'
     
@@ -561,7 +645,13 @@ export default function CheckInPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="camera" onValueChange={(value) => setScanMode(value as 'camera' | 'manual')}>
+              <Tabs defaultValue="camera" onValueChange={(value) => {
+                setScanMode(value as 'camera' | 'manual');
+                // Parar scanner quando trocar para modo manual
+                if (value === 'manual' && scanning) {
+                  stopScanning();
+                }
+              }}>
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="camera">Câmera</TabsTrigger>
                   <TabsTrigger value="manual">Código Manual</TabsTrigger>
@@ -585,21 +675,8 @@ export default function CheckInPage() {
                           </div>
                           
                           <Html5QrcodeScanner
-                            onScan={(data) => {
-                              if (data && data.text) {
-                                // Processamos o QR code quando ele for detectado
-                                console.log('QR Code detectado:', data.text);
-                                handleScan(data.text);
-                              }
-                            }}
-                            onError={(error) => {
-                              console.error('Erro no scanner:', error);
-                              toast({
-                                title: "Erro na câmera",
-                                description: "Não foi possível acessar a câmera para leitura do QR code.",
-                                variant: "destructive"
-                              });
-                            }}
+                            onScan={handleScan}
+                            onError={handleScanError}
                           />
                         </div>
                       </div>
@@ -611,7 +688,7 @@ export default function CheckInPage() {
                             onClick={startScanning}
                             className="gap-2"
                           >
-                            <Scan className="h-5 w-5" />
+                            <Camera className="h-5 w-5" />
                             Iniciar Scanner
                           </Button>
                           <p className="mt-4 text-sm text-muted-foreground">
