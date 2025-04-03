@@ -2,13 +2,11 @@
 import OrganizationClient from './OrganizationClient'
 
 interface PageProps {
-  params: Promise<{ id: string }>
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+  params: { id: string }
+  searchParams: { [key: string]: string | string[] | undefined }
 }
 
 export default async function OrganizationPage(props: PageProps) {
-  const resolvedParams = await props.params
-  
-  // Passa o ID para o componente cliente
-  return <OrganizationClient id={resolvedParams.id} />
+  // Passa o ID para o componente cliente diretamente
+  return <OrganizationClient id={props.params.id} />
 } 

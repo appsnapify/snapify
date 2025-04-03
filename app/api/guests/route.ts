@@ -287,23 +287,66 @@ export async function PUT(request: NextRequest) {
     
     if (fetchError) {
       console.log(`API Check-in - Erro ao buscar convidado: ${fetchError.message}`);
+      
+      // Tentar buscar na tabela guest_list_guests como fallback
+      const { data: guestListGuest, error: guestListError } = await supabase
+        .from('guest_list_guests')
+        .select('*')
+        .eq('id', body.id)
+        .single();
+        
+      if (!guestListError && guestListGuest) {
+        // Processar check-in na tabela guest_list_guests
+        const updateData = { 
+          checked_in: body.checked_in,
+          is_checked_in: body.checked_in,
+          check_in_time: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        const { data, error } = await supabase
+          .from('guest_list_guests')
+          .update(updateData)
+          .eq('id', body.id)
+          .select();
+          
+        if (error) {
+          return NextResponse.json(
+            { error: error.message },
+            { status: 500 }
+          )
+        }
+        
+        return NextResponse.json({ 
+          success: true, 
+          data: data[0],
+          message: `Check-in de ${guestListGuest.name} realizado com sucesso`
+        })
+      }
+      
       return NextResponse.json(
         { error: `Convidado não encontrado: ${fetchError.message}` },
         { status: 404 }
       )
     }
     
-    // Verificar se já fez check-in
-    const alreadyCheckedIn = existingGuest?.checked_in === true;
+    // Verificar se já fez check-in (verificar tanto checked_in quanto is_checked_in para compatibilidade)
+    const alreadyCheckedIn = existingGuest?.checked_in === true || existingGuest?.is_checked_in === true;
     console.log(`API Check-in - Convidado ${existingGuest.name} já fez check-in antes? ${alreadyCheckedIn}`);
+    
+    // Preparar os dados de atualização - garantir que ambos os campos sejam atualizados
+    const updateData = { 
+      checked_in: body.checked_in,
+      is_checked_in: body.checked_in, // Atualizar ambos os campos para garantir compatibilidade
+      check_in_time: alreadyCheckedIn ? existingGuest.check_in_time : new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log(`API Check-in - Dados de atualização:`, updateData);
     
     const { data, error } = await supabase
       .from('guests')
-      .update({ 
-        checked_in: body.checked_in,
-        check_in_time: alreadyCheckedIn ? existingGuest.check_in_time : new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', body.id)
       .select();
     
@@ -327,7 +370,7 @@ export async function PUT(request: NextRequest) {
   } catch (err) {
     console.error('API Check-in - Erro interno:', err);
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { error: 'Erro interno do servidor', details: String(err) },
       { status: 500 }
     )
   }

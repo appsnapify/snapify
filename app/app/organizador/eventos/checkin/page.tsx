@@ -230,57 +230,27 @@ export default function CheckInPage() {
     setScanning(false)
   }
 
-  const handleScan = async (data: string | null) => {
-    if (!data) return;
+  const handleScan = (qrCodeData: string) => {
+    console.log('QR Code escaneado:', qrCodeData);
     
-    console.log('QR Code escaneado:', data);
-    
-    try {
-      // Parar temporariamente o scanning
-      setScanning(false);
-      
-      // Tentar extrair os dados do QR code
-      let qrData;
-      try {
-        // O QR code pode estar em formato JSON
-        qrData = JSON.parse(data);
-        console.log('QR Code parseado com sucesso:', qrData);
-      } catch (e) {
-        // Se não estiver em formato JSON, pode ser URL ou outro formato
-        console.log('QR Code não é JSON, tentando processar como string:', data);
-        qrData = { raw: data };
-      }
-      
-      // Verificar se temos os dados necessários
-      if (qrData && (qrData.eventId || qrData.guestId)) {
-        await processQrCode(data);
-      } else {
-        console.error('QR Code inválido, formato desconhecido:', data);
-        toast({
-          title: "QR code inválido",
-          description: "O QR code escaneado não contém dados válidos para check-in.",
-          variant: "destructive"
-        });
-        
-        // Reiniciar o scanner após 2 segundos
-        setTimeout(() => {
-          setScanning(true);
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Erro ao processar QR code:', error);
+    // Garantir que temos um texto limpo para processar
+    const cleanedData = qrCodeData?.trim();
+    if (!cleanedData) {
+      console.log('QR Code vazio ou inválido');
       toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao processar o QR code.",
+        title: "QR Code inválido",
+        description: "O QR code está vazio ou não pode ser lido",
         variant: "destructive"
       });
-      
-      // Reiniciar o scanner após 2 segundos
-      setTimeout(() => {
-        setScanning(true);
-      }, 2000);
+      return;
     }
-  }
+    
+    // Parar o scanner temporariamente para evitar escaneamentos duplicados
+    setScanning(false);
+    
+    // Processar o código lido
+    processQrCode(cleanedData);
+  };
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -302,12 +272,12 @@ export default function CheckInPage() {
         title: "Selecione um evento",
         description: "Por favor, selecione um evento antes de fazer check-in",
         variant: "destructive"
-      })
-      return
+      });
+      return;
     }
     
     try {
-      setScanning(false)
+      setScanning(false);
       
       console.log("Processando QR code:", { code, eventId: selectedEvent });
       
@@ -318,33 +288,69 @@ export default function CheckInPage() {
       try {
         // Tentar extrair os dados do QR code como JSON
         qrData = JSON.parse(code);
-        console.log("QR data parseado:", qrData);
+        console.log("QR data parseado com sucesso:", qrData);
         
         // Extrair o ID do convidado do JSON
         if (qrData.guestId) {
           guestId = qrData.guestId;
+          console.log("ID extraído do campo guestId:", guestId);
+        } else if (qrData.id) {
+          // Alguns QR codes podem usar 'id' em vez de 'guestId'
+          guestId = qrData.id;
+          console.log("ID extraído do campo id:", guestId);
+        } else if (qrData.eventId && qrData.eventId === selectedEvent) {
+          // Se o eventId corresponder ao evento selecionado, podemos ter mais confiança
+          // de que este é realmente um QR code válido para este evento
+          console.log("Event ID corresponde, procurando por qualquer campo de ID");
+          
+          // Procurar por qualquer propriedade que contenha "id" no nome e pareça um UUID
+          for (const key in qrData) {
+            if (key.toLowerCase().includes('id') && 
+                typeof qrData[key] === 'string' && 
+                qrData[key].match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+              guestId = qrData[key];
+              console.log(`ID encontrado no campo ${key}:`, guestId);
+              break;
+            }
+          }
         }
       } catch (e) {
-        console.error("Erro ao parsear QR code:", e);
-        // Se não for JSON, usar o código bruto
-        guestId = code;
+        console.error("Erro ao parsear QR code como JSON:", e, "Texto original:", code);
+        // Se não for JSON, verificar se o código parece ser um UUID
+        if (code.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+          console.log("O código parece ser um UUID válido, usando diretamente");
+          guestId = code;
+        } else {
+          console.log("Tentando extrair UUID do texto do QR code");
+          // Verificar se o texto do QR contém um UUID em algum lugar
+          const uuidMatch = code.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+          if (uuidMatch) {
+            guestId = uuidMatch[0];
+            console.log("UUID encontrado no QR code:", guestId);
+          } else {
+            console.log("Conteúdo completo do QR code (não é JSON nem contém UUID):", code);
+          }
+        }
       }
       
       if (!guestId) {
+        console.error("Não foi possível extrair um ID de convidado válido do QR code. Conteúdo:", code);
         toast({
           title: "QR Code inválido",
-          description: "O QR code não contém um ID de convidado válido",
+          description: "O QR code não contém um ID de convidado válido. Tente novamente ou use o código manual.",
           variant: "destructive"
         });
         
         // Reiniciar scanner após 3 segundos
         if (scanMode === 'camera') {
           setTimeout(() => {
-            setScanning(true)
-          }, 3000)
+            setScanning(true);
+          }, 3000);
         }
         return;
       }
+      
+      console.log("Enviando solicitação de check-in para a API com ID:", guestId);
       
       // Fazer requisição à API para processar o check-in
       const response = await fetch('/api/guests', {
@@ -357,86 +363,117 @@ export default function CheckInPage() {
           checked_in: true,
           event_id: selectedEvent
         })
-      })
-      
-      const data = await response.json()
-      console.log("Resposta da API:", data);
+      });
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Erro na resposta da API:", response.status, errorText);
+        
+        try {
+          // Tentar parsear o erro como JSON para mostrar mensagem mais informativa
+          const errorData = JSON.parse(errorText);
+          toast({
+            title: "Erro no check-in",
+            description: errorData.error || "Não foi possível realizar o check-in",
+            variant: "destructive"
+          });
+        } catch (e) {
+          toast({
+            title: "Erro no check-in",
+            description: `Erro ${response.status}: ${errorText.substring(0, 100)}`,
+            variant: "destructive"
+          });
+        }
+        
         setLastResult({
           success: false,
-          message: data.error || 'QR Code inválido ou não encontrado'
-        })
+          message: `Erro ${response.status}: Falha ao processar check-in`,
+          error: errorText
+        });
+        
+        // Reiniciar scanner após 3 segundos
+        if (scanMode === 'camera') {
+          setTimeout(() => {
+            setScanning(true);
+          }, 3000);
+        } else {
+          setManualCode('');
+        }
+        
+        return;
+      }
+      
+      const data = await response.json();
+      console.log("Resposta da API:", data);
+      
+      setLastResult({
+        success: true,
+        message: data.message || "Check-in realizado com sucesso",
+        guest: data.data
+      });
+      
+      // Se é um novo check-in (não é um check-in repetido)
+      if (!data.alreadyCheckedIn) {
+        // Atualizar estatísticas locais
+        setStats(prev => ({
+          ...prev,
+          checkedIn: prev.checkedIn + 1
+        }));
         
         toast({
-          title: "Erro no check-in",
-          description: data.error || "QR code inválido ou não encontrado",
-          variant: "destructive"
-        })
+          title: "Check-in confirmado",
+          description: `${data.data?.name || 'Convidado'} está na guest list!`
+        });
       } else {
-        setLastResult({
-          success: true,
-          message: data.message || "Check-in realizado com sucesso",
-          guest: data.data
-        })
-        
-        // Se é um novo check-in (não é um check-in repetido)
-        if (!data.alreadyCheckedIn) {
-          // Atualizar estatísticas locais
-          setStats(prev => ({
-            ...prev,
-            checkedIn: prev.checkedIn + 1
-          }))
-          
-          toast({
-            title: "Check-in confirmado",
-            description: `${data.data?.name || 'Convidado'} está na guest list!`
-          })
-        } else {
-          toast({
-            title: "Atenção",
-            description: "Este convidado já fez check-in!",
-            variant: "destructive"
-          })
-        }
-        
-        // Atualizar a lista de convidados
-        if (selectedEvent) {
-          // Buscar convidados novamente
-          supabase
-            .from('guests')
-            .select('*')
-            .eq('event_id', selectedEvent)
-            .order('created_at', { ascending: false })
-            .then(({ data, error }) => {
-              if (!error && data) {
-                setGuests(data || [])
-              }
-            });
-        }
+        toast({
+          title: "Atenção",
+          description: "Este convidado já fez check-in!",
+          variant: "destructive"
+        });
+      }
+      
+      // Atualizar a lista de convidados
+      if (selectedEvent) {
+        // Buscar convidados novamente
+        supabase
+          .from('guests')
+          .select('*')
+          .eq('event_id', selectedEvent)
+          .order('created_at', { ascending: false })
+          .then(({ data, error }) => {
+            if (!error && data) {
+              setGuests(data || [])
+            }
+          });
       }
       
       // Reiniciar scanner após 3 segundos
       if (scanMode === 'camera') {
         setTimeout(() => {
-          setScanning(true)
-        }, 3000)
+          setScanning(true);
+        }, 3000);
       } else {
-        setManualCode('')
+        setManualCode('');
       }
       
     } catch (error) {
       console.error('Erro ao processar QR code:', error)
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao processar o check-in",
+        description: "Ocorreu um erro ao processar o check-in. Verifique o console para mais detalhes.",
         variant: "destructive"
       })
       
+      setLastResult({
+        success: false,
+        message: `Erro: ${String(error)}`,
+        error: String(error)
+      });
+      
       if (scanMode === 'camera') {
         setTimeout(() => {
-          setScanning(true)
-        }, 3000)
+          setScanning(true);
+        }, 3000);
       }
     }
   }

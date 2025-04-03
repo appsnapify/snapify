@@ -63,82 +63,57 @@ export default function EventosPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState('all')
   const { toast } = useToast()
+  const [refreshKey, setRefreshKey] = useState(0) // Estado para forçar refresh
   
-  // Tentar carregar eventos quando a organização mudar
+  // Função para forçar atualização da página
+  const forceRefresh = () => {
+    console.log("Forçando atualização da página de eventos");
+    setRefreshKey(prev => prev + 1);
+  };
+  
   useEffect(() => {
-    console.log("Estado da organização:", currentOrganization?.id, "loading:", orgLoading)
-    
-    // Aguardar o carregamento da organização
-    if (orgLoading) {
-      return;
-    }
-    
-    // Verificar a estrutura da tabela eventos
-    async function checkTableStructure() {
-      try {
-        console.log("Verificando estrutura da tabela 'events'")
-        
-        // Verificar se a tabela events existe
-        const { data: tableInfo, error: tableError } = await supabase
-          .from('events')
-          .select('*')
-          .limit(1)
-        
-        if (tableError) {
-          console.error("Erro ao acessar tabela 'events':", tableError)
-        } else {
-          console.log("Estrutura da tabela 'events':", tableInfo)
-        }
-      } catch (err) {
-        console.error("Erro ao verificar estrutura:", err)
-      }
-    }
-    
-    // Função para carregar eventos
+    // Carregar eventos
     async function loadEvents() {
-      if (!currentOrganization) {
-        console.log("Nenhuma organização selecionada, interrompendo carregamento de eventos")
-        setLoading(false)
-        setEventList([])
-        return
-      }
+      if (!currentOrganization?.id) return;
       
-      // Verificar a estrutura antes de carregar
-      await checkTableStructure()
+      setLoading(true);
       
-      setLoading(true)
       try {
-        console.log("Buscando eventos para organização:", currentOrganization.id, currentOrganization.name)
-        
-        // Buscar eventos do Supabase
+        console.log(`Buscando eventos para organização: ${currentOrganization.id}`);
         const { data, error } = await supabase
           .from('events')
           .select('*')
           .eq('organization_id', currentOrganization.id)
-          .order('date', { ascending: false })
+          .order('created_at', { ascending: false });
         
         if (error) {
-          console.error("Erro ao buscar eventos:", error)
-          throw new Error(error.message)
+          console.error('Erro ao carregar eventos:', error);
+          toast({
+            title: "Erro ao carregar eventos",
+            description: error.message,
+            variant: "destructive"
+          });
+        } else {
+          console.log(`${data?.length || 0} eventos encontrados`);
+          setEventList(data || []);
         }
-        
-        console.log("Eventos encontrados:", data?.length || 0, data)
-        setEventList(data || [])
       } catch (err) {
-        console.error("Erro ao carregar eventos:", err)
-        setError("Não foi possível carregar os eventos. Por favor, tente novamente.")
+        console.error('Erro ao carregar eventos:', err);
         toast({
-          title: "Erro ao carregar eventos",
-          description: "Houve um problema ao buscar os eventos. Tente novamente mais tarde.",
+          title: "Erro inesperado",
+          description: "Não foi possível carregar seus eventos",
           variant: "destructive"
-        })
+        });
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-
-    loadEvents()
-  }, [currentOrganization, orgLoading])
+    
+    loadEvents();
+    
+    // Removida atualização automática para evitar refreshes constantes
+    
+  }, [currentOrganization, refreshKey]); // Manter refreshKey como dependência
 
   if (orgLoading) {
     return (
@@ -350,118 +325,67 @@ function EventCard({ event, onAction }: { event: Event, onAction: (action: strin
   const refreshGuestCount = async () => {
     if (event.type === 'guest-list') {
       setIsLoading(true);
-      let contagemTotal = 0;
       
       try {
-        console.log(`EventCard - Atualizando contagem de convidados para evento ${event.id}`);
+        console.log(`EventCard [${event.id}] - Buscando contagem via API`);
         
-        // 1. Primeiro tenta com a tabela guests principal
-        const { data: guestsData, error: guestsError } = await supabase
-          .from('guests')
-          .select('id')
-          .eq('event_id', event.id);
+        // Usar o endpoint de API dedicado para contagem
+        const response = await fetch(`/api/guest-count?eventId=${event.id}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store',
+            'Pragma': 'no-cache'
+          },
+        });
         
-        if (!guestsError && guestsData) {
-          contagemTotal += guestsData.length;
-          console.log(`EventCard - Encontrados ${guestsData.length} convidados na tabela guests`);
-        } else {
-          console.log("EventCard - Erro ou nenhum convidado na tabela guests:", guestsError);
+        if (!response.ok) {
+          throw new Error(`API retornou erro: ${response.status}`);
         }
         
-        // 2. Verificar também na tabela guest_list_guests
-        const { data: glGuestsData, error: glGuestsError } = await supabase
-          .from('guest_list_guests')
-          .select('id')
-          .eq('event_id', event.id);
+        const data = await response.json();
+        const count = data.count || 0;
         
-        if (!glGuestsError && glGuestsData) {
-          contagemTotal += glGuestsData.length;
-          console.log(`EventCard - Encontrados ${glGuestsData.length} convidados na tabela guest_list_guests`);
-        } else {
-          console.log("EventCard - Erro ou nenhum convidado na tabela guest_list_guests:", glGuestsError);
-        }
-        
-        // 3. Verificar tabela específica do evento se existir
+        console.log(`EventCard [${event.id}] - API retornou ${count} convidados`);
+        setGuestCount(count);
+      } catch (err) {
+        console.error(`EventCard [${event.id}] - Erro ao buscar contagem:`, err);
+        // Fallback: tentar buscar diretamente no Supabase como plano B
         try {
-          const tempTableName = `guests_${event.id.replace(/-/g, '_')}`;
-          console.log(`EventCard - Verificando tabela específica ${tempTableName}`);
-          
-          const { data: eventSpecificData, error: eventSpecificError } = await supabase
-            .from(tempTableName)
+          console.log(`EventCard [${event.id}] - Tentando fallback direto`);
+          const { data, error } = await supabase
+            .from('guests')
             .select('id')
             .eq('event_id', event.id);
           
-          if (!eventSpecificError && eventSpecificData) {
-            contagemTotal += eventSpecificData.length;
-            console.log(`EventCard - Encontrados ${eventSpecificData.length} convidados na tabela ${tempTableName}`);
+          if (error) {
+            console.error(`EventCard [${event.id}] - Erro no fallback:`, error);
+            setGuestCount(0);
+          } else {
+            const count = data?.length || 0;
+            console.log(`EventCard [${event.id}] - Fallback encontrou ${count} convidados`);
+            setGuestCount(count);
           }
-        } catch (tempTableErr) {
-          // Tabela específica provavelmente não existe, ignorar
+        } catch (fbErr) {
+          console.error(`EventCard [${event.id}] - Erro no fallback:`, fbErr);
+          setGuestCount(0);
         }
-        
-        // 4. Se ainda não encontrou convidados e temos acesso à função exec_sql, tenta com SQL direto
-        if (contagemTotal === 0) {
-          try {
-            console.log("EventCard - Tentando consulta SQL direta para encontrar convidados");
-            const { data: sqlData, error: sqlError } = await supabase.rpc('exec_sql', {
-              sql: `
-                SELECT COUNT(*) FROM (
-                  SELECT id FROM guests WHERE event_id = '${event.id}'
-                  UNION ALL
-                  SELECT id FROM guest_list_guests WHERE event_id = '${event.id}'
-                ) AS all_guests
-              `
-            });
-            
-            if (!sqlError && sqlData && sqlData.result && sqlData.result[0]) {
-              const sqlCount = parseInt(sqlData.result[0].count, 10);
-              console.log(`EventCard - Contagem via SQL direta: ${sqlCount} convidados`);
-              contagemTotal = sqlCount;
-            }
-          } catch (sqlErr) {
-            console.log("EventCard - Erro ao tentar SQL direto (provavelmente função não existe):", sqlErr);
-          }
-        }
-        
-        // Definir contagem total
-        console.log(`EventCard - Contagem total de convidados: ${contagemTotal}`);
-        setGuestCount(contagemTotal);
-      } catch (err) {
-        console.error("EventCard - Erro ao atualizar contagem:", err);
       } finally {
         setIsLoading(false);
       }
     }
   };
   
-  // Carregar e atualizar contagem de convidados
+  // Carregar contagem inicial e configurar atualização periódica
   useEffect(() => {
-    // Carregar contagem inicial imediatamente
-    refreshGuestCount();
-    
-    // Configurar atualização periódica a cada 5 segundos
     if (event.type === 'guest-list') {
-      const interval = setInterval(() => {
-        refreshGuestCount();
-      }, 5000); // 5 segundos
+      // Buscar contagem inicial (uma única vez)
+      refreshGuestCount();
       
-      // Limpar o intervalo quando o componente for desmontado
-      return () => clearInterval(interval);
+      // Removida atualização automática a cada 5 segundos
+      // const interval = setInterval(refreshGuestCount, 5000);
+      // return () => clearInterval(interval);
     }
   }, [event.id, event.type]);
-  
-  // Adicional: forçar atualização uma vez depois da renderização inicial
-  useEffect(() => {
-    if (event.type === 'guest-list' && guestCount === null) {
-      // Tentar obter a contagem após um curto atraso
-      const timer = setTimeout(() => {
-        console.log('EventCard - Atualizando contagem novamente após renderização inicial');
-        refreshGuestCount();
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, []);
 
   return (
     <Card className="overflow-hidden">
@@ -496,13 +420,26 @@ function EventCard({ event, onAction }: { event: Event, onAction: (action: strin
         {/* Mostrar contagem de convidados para guest list */}
         {event.type === 'guest-list' && (
           <div className="mt-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <UserCheck className="w-3 h-3" />
-              {isLoading ? (
-                <span>Carregando...</span>
-              ) : (
-                <span>{guestCount !== null ? `${guestCount} convidados registrados` : 'Nenhum convidado'}</span>
-              )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <UserCheck className="w-3 h-3" />
+                {isLoading ? (
+                  <span>Carregando...</span>
+                ) : (
+                  <span>{guestCount !== null ? `${guestCount} convidados registrados` : 'Nenhum convidado'}</span>
+                )}
+              </div>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  refreshGuestCount();
+                }}
+                className="text-xs text-blue-500 hover:text-blue-700"
+                disabled={isLoading}
+              >
+                {isLoading ? '...' : 'Atualizar'}
+              </button>
             </div>
           </div>
         )}

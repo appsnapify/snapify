@@ -37,17 +37,26 @@ export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps)
         await scanner.start(
           { facingMode: 'environment' },
           {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
+            fps: 15,
+            qrbox: { width: 300, height: 300 },
+            aspectRatio: 1.0,
+            disableFlip: false,
+            experimentalFeatures: {
+              useBarCodeDetectorIfSupported: true
+            }
           },
           (decodedText) => {
             console.log(`QR Code detectado: ${decodedText}`);
-            onScan({ text: decodedText });
+            const cleanedText = decodedText.trim();
+            onScan({ text: cleanedText });
           },
           (errorMessage) => {
             console.log(`Erro no scanner (não crítico): ${errorMessage}`);
           }
-        );
+        ).catch(err => {
+          console.error('Erro ao iniciar scanner:', err);
+          if (onError) onError(err);
+        });
       } catch (error) {
         console.error('Erro ao inicializar scanner:', error);
         if (onError) onError(error);
@@ -76,12 +85,15 @@ export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps)
       <style jsx>{`
         .qr-scanner-container {
           width: 100%;
-          min-height: 300px;
+          min-height: 400px;
           position: relative;
         }
         .scanner-area {
           width: 100%;
           height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
       `}</style>
     </div>
