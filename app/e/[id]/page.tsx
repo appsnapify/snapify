@@ -253,7 +253,7 @@ function EventPageContent({ eventId }: { eventId: string }) {
 }
 
 // Componente principal que lida com os parâmetros
-export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EventPage({ params }: { params: { id: string } }) {
   // Desembrulhar o params usando React.use()
   const resolvedParams = use(params);
   return <EventPageContent eventId={resolvedParams.id} />;

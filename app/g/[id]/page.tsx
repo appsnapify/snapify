@@ -602,7 +602,7 @@ function GuestListPageContent({ eventId }: { eventId: string }) {
 }
 
 // Componente principal que lida com os parâmetros
-export default function GuestListPage({ params }: { params: Promise<{ id: string }> }) {
+export default function GuestListPage({ params }: { params: { id: string } }) {
   // Desembrulhar o params usando React.use()
   const resolvedParams = use(params);
   return <GuestListPageContent eventId={resolvedParams.id} />;
