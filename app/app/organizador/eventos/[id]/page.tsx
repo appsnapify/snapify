@@ -4,13 +4,7 @@ import { CalendarIcon, MapPinIcon, ArrowLeftIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Suspense } from 'react';
-import dynamic from 'next/dynamic';
-
-// Importe dinâmico do componente ClientDiagnostic
-const ClientDiagnostic = dynamic(() => import('./ClientDiagnostic'), {
-  ssr: false,
-  loading: () => <div className="p-4 bg-slate-50 rounded-md">Carregando ferramenta de diagnóstico...</div>
-});
+import DiagnosticWrapper from './DiagnosticWrapper';
 
 interface PageProps {
   params: { id: string }
@@ -152,11 +146,9 @@ export default async function EventoDetalhesPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Ferramenta de diagnóstico de dados - com carregamento preguiçoso */}
+      {/* Ferramenta de diagnóstico de dados - agora usando o wrapper */}
       {event.type === 'guest-list' && (
-        <Suspense fallback={<div className="p-4 bg-slate-50 rounded-md">Carregando diagnóstico...</div>}>
-          <ClientDiagnostic eventId={params.id} />
-        </Suspense>
+        <DiagnosticWrapper eventId={params.id} />
       )}
     </div>
   );
