@@ -25,6 +25,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Badge } from '@/components/ui/badge'
+import { use } from 'react'
 
 // Inicializar cliente do Supabase
 const supabase = createClient(
@@ -61,7 +62,8 @@ interface Event {
   guest_list_settings?: any
 }
 
-export default function GuestListPage({ params }: { params: { id: string } }) {
+// Componente que contém a lógica da página
+function GuestListPageContent({ eventId }: { eventId: string }) {
   const router = useRouter()
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
@@ -89,7 +91,7 @@ export default function GuestListPage({ params }: { params: { id: string } }) {
         const { data, error } = await supabase
           .from('events')
           .select('*')
-          .eq('id', params.id)
+          .eq('id', eventId)
           .eq('is_active', true)
           .eq('type', 'guest-list')
           .single()
@@ -109,7 +111,7 @@ export default function GuestListPage({ params }: { params: { id: string } }) {
         const { count, error: countError } = await supabase
           .from('guests')
           .select('*', { count: 'exact', head: true })
-          .eq('event_id', params.id)
+          .eq('event_id', eventId)
         
         if (!countError) {
           setGuestCount(count || 0)
@@ -123,7 +125,7 @@ export default function GuestListPage({ params }: { params: { id: string } }) {
     }
     
     loadEvent()
-  }, [params.id])
+  }, [eventId])
   
   // Função para formatar data
   const formatDate = (dateString: string) => {
@@ -395,4 +397,11 @@ export default function GuestListPage({ params }: { params: { id: string } }) {
       </div>
     </div>
   )
+}
+
+// Componente principal que lida com os parâmetros
+export default function GuestListPage({ params }: { params: Promise<{ id: string }> }) {
+  // Desembrulhar o params usando React.use()
+  const resolvedParams = use(params);
+  return <GuestListPageContent eventId={resolvedParams.id} />;
 } 
