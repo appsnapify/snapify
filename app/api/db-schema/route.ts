@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Definir interface para os resultados
+interface ResultData {
+  count?: number;
+  data?: any[];
+  error?: string;
+  exists?: boolean;
+}
+
+// Interface para o objeto de resultados com índice dinâmico
+interface CompleteResults {
+  [key: string]: ResultData;
+}
+
 // Criar cliente Supabase com service role para ter acesso completo
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
     
     const event_id = body.event_id;
-    const results = {};
+    const results: CompleteResults = {};
     
     // 1. Verificar tabela guests
     try {
