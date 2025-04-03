@@ -21,6 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { use } from 'react'
 
 // Inicializar cliente do Supabase
 const supabase = createClient(
@@ -56,7 +57,8 @@ interface Event {
   organization_id: string
 }
 
-export default function EventPage({ params }: { params: { id: string } }) {
+// Componente que contém a lógica da página
+function EventPageContent({ eventId }: { eventId: string }) {
   const router = useRouter()
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
@@ -83,7 +85,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
         const { data, error } = await supabase
           .from('events')
           .select('*')
-          .eq('id', params.id)
+          .eq('id', eventId)
           .eq('is_active', true)
           .single()
           
@@ -106,7 +108,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
     }
     
     loadEvent()
-  }, [params.id])
+  }, [eventId])
   
   // Função para formatar data
   const formatDate = (dateString: string) => {
@@ -375,4 +377,11 @@ export default function EventPage({ params }: { params: { id: string } }) {
       </div>
     </div>
   )
+}
+
+// Componente principal que lida com os parâmetros
+export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
+  // Desembrulhar o params usando React.use()
+  const resolvedParams = use(params);
+  return <EventPageContent eventId={resolvedParams.id} />;
 } 
