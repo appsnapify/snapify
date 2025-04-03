@@ -196,7 +196,7 @@ export default function CheckInPage() {
                 // Atualizar estatísticas
                 setStats({
                   total: sqlData.result.length,
-                  checkedIn: sqlData.result.filter(g => g.checked_in).length
+                  checkedIn: sqlData.result.filter((g: any) => g.checked_in).length
                 });
               }
             });
@@ -207,7 +207,7 @@ export default function CheckInPage() {
             // Atualizar estatísticas diretamente daqui
             setStats({
               total: data?.length || 0,
-              checkedIn: data?.filter(g => g.checked_in).length || 0
+              checkedIn: data?.filter((g: any) => g.checked_in).length || 0
             });
             
             setLoading(false);
