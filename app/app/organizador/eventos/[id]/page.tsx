@@ -7,13 +7,14 @@ import { Suspense } from 'react';
 import DiagnosticWrapper from './DiagnosticWrapper';
 
 interface PageProps {
-  params: { id: string }
-  searchParams: { [key: string]: string | string[] | undefined }
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const resolvedParams = await params;
   return {
-    title: `Evento ${params.id} - Detalhes`,
+    title: `Evento ${resolvedParams.id} - Detalhes`,
   }
 }
 
@@ -35,9 +36,10 @@ export default async function EventoDetalhesPage({ params }: PageProps) {
   // Carrega os dados do evento no servidor
   let event;
   let errorMessage = null;
-
+  
   try {
-    event = await fetchEvent(params.id);
+    const resolvedParams = await params;
+    event = await fetchEvent(resolvedParams.id);
   } catch (err: any) {
     errorMessage = err.message || 'Erro ao carregar evento';
     console.error('Erro ao carregar evento:', err);
@@ -134,10 +136,10 @@ export default async function EventoDetalhesPage({ params }: PageProps) {
               </p>
               
               <div className="flex space-x-2">
-                <a href={`/app/organizador/eventos/checkin?event=${params.id}`}>
+                <a href={`/app/organizador/eventos/checkin?event=${resolvedParams.id}`}>
                   <Button variant="outline">Check-in</Button>
                 </a>
-                <a href={`/g/${params.id}`}>
+                <a href={`/g/${resolvedParams.id}`}>
                   <Button variant="default">Ver página pública</Button>
                 </a>
               </div>
@@ -148,7 +150,7 @@ export default async function EventoDetalhesPage({ params }: PageProps) {
 
       {/* Ferramenta de diagnóstico de dados - agora usando o wrapper */}
       {event.type === 'guest-list' && (
-        <DiagnosticWrapper eventId={params.id} />
+        <DiagnosticWrapper eventId={resolvedParams.id} />
       )}
     </div>
   );
