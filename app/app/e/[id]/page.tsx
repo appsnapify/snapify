@@ -21,6 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { Badge } from '@/components/ui/badge'
 import { use } from 'react'
 
 // Inicializar cliente do Supabase

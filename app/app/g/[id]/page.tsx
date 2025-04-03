@@ -263,22 +263,18 @@ function GuestListPageContent({ eventId }: { eventId: string }) {
           <div className="container max-w-4xl mx-auto px-4 pb-8">
             <Badge className="mb-2 bg-blue-600">Guest List</Badge>
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{event.title}</h1>
-            <div className="flex items-center text-white opacity-80">
-              <Users className="h-4 w-4 mr-1" />
-              <span>{guestCount} {guestCount === 1 ? 'pessoa' : 'pessoas'} confirmadas</span>
-            </div>
           </div>
         </div>
       </div>
       
-      {/* Conteúdo do evento */}
+      {/* Conteúdo da guest list */}
       <div className="container max-w-4xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Coluna principal */}
+          {/* Coluna principal - Detalhes do evento */}
           <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Detalhes da Guest List</CardTitle>
+                <CardTitle>Detalhes do Evento</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3 text-gray-700">
@@ -299,6 +295,13 @@ function GuestListPageContent({ eventId }: { eventId: string }) {
                   </div>
                 </div>
                 
+                <div className="flex items-center gap-3 text-gray-700">
+                  <Users className="h-5 w-5 text-gray-500" />
+                  <div>
+                    <p className="font-medium">{guestCount} pessoas confirmadas</p>
+                  </div>
+                </div>
+                
                 <div className="pt-4 border-t">
                   <p className="text-gray-600 whitespace-pre-wrap">{event.description}</p>
                 </div>
@@ -314,21 +317,21 @@ function GuestListPageContent({ eventId }: { eventId: string }) {
           
           {/* Coluna lateral - Formulário de registro ou confirmação */}
           <div className="md:col-span-1">
-            <Card className="sticky top-4">
-              <CardHeader className="bg-blue-50 border-b">
-                <CardTitle className="text-blue-700">
+            <Card>
+              <CardHeader>
+                <CardTitle>
                   {registrationSuccess 
-                    ? 'Confirmação da Guest List!' 
-                    : 'Confirmar Presença'}
+                    ? 'Registro Confirmado!' 
+                    : 'Garantir Presença'}
                 </CardTitle>
                 <CardDescription>
                   {registrationSuccess 
-                    ? 'Você está na lista do evento.' 
+                    ? 'Você está na guest list do evento.' 
                     : 'Registre-se para entrar na guest list'}
                 </CardDescription>
               </CardHeader>
               
-              <CardContent className="pt-6">
+              <CardContent>
                 {registrationSuccess ? (
                   <div className="text-center py-4">
                     <UserCheck className="h-16 w-16 mx-auto text-green-500 mb-4" />
@@ -382,10 +385,10 @@ function GuestListPageContent({ eventId }: { eventId: string }) {
                       
                       <Button 
                         type="submit" 
-                        className="w-full bg-blue-600 hover:bg-blue-700" 
+                        className="w-full" 
                         disabled={submitting}
                       >
-                        {submitting ? 'Enviando...' : 'Garantir Minha Vaga'}
+                        {submitting ? 'Enviando...' : 'Confirmar Presença'}
                       </Button>
                     </form>
                   </Form>
