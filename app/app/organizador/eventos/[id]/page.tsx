@@ -33,12 +33,14 @@ async function fetchEvent(id: string) {
 }
 
 export default async function EventoDetalhesPage({ params }: PageProps) {
+  // Resolver o params no início para usar em todo o componente
+  const resolvedParams = await params;
+  
   // Carrega os dados do evento no servidor
   let event;
   let errorMessage = null;
   
   try {
-    const resolvedParams = await params;
     event = await fetchEvent(resolvedParams.id);
   } catch (err: any) {
     errorMessage = err.message || 'Erro ao carregar evento';
