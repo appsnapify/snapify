@@ -322,7 +322,7 @@ function GuestListPageContent({ eventId }: { eventId: string }) {
   
   // Função para compartilhar via WhatsApp
   const shareViaWhatsApp = () => {
-    const message = `Venha comigo para o evento ${event?.title} em ${event?.location} no dia ${formatDate(event?.date)}!`;
+    const message = `Venha comigo para o evento ${event?.title} em ${event?.location} no dia ${formatDate(event?.date || '')}!`;
     const url = window.location.href;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + '\n\n' + url)}`;
     window.open(whatsappUrl, '_blank');
