@@ -244,11 +244,14 @@ export default function CheckInPage() {
         description: "Solicitando acesso à câmera...",
       });
       
-      await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment' // Preferir câmera traseira
         } 
       });
+      
+      // Liberar a stream após verificar permissão
+      stream.getTracks().forEach(track => track.stop());
       
       toast({
         title: "Sucesso",
@@ -256,6 +259,7 @@ export default function CheckInPage() {
       });
       
       // Se chegou aqui, podemos iniciar o scanner
+      setScanMode('camera');
       setScanning(true);
       
     } catch (error: any) {
@@ -299,7 +303,7 @@ export default function CheckInPage() {
   }
 
   const handleScan = (qrCodeData: string) => {
-    console.log('QR Code escaneado:', qrCodeData);
+    console.log('QR Code escaneado com sucesso:', qrCodeData);
     
     // Garantir que temos um texto limpo para processar
     const cleanedData = qrCodeData?.trim();
@@ -315,6 +319,12 @@ export default function CheckInPage() {
     
     // Parar o scanner temporariamente para evitar escaneamentos duplicados
     setScanning(false);
+    
+    // Mostrar feedback visual
+    toast({
+      title: "QR Code detectado",
+      description: "Processando código...",
+    });
     
     // Processar o código lido
     processQrCode(cleanedData);
@@ -660,9 +670,9 @@ export default function CheckInPage() {
                 <TabsContent value="camera">
                   <div className="space-y-4">
                     {scanning ? (
-                      <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                      <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
                         {/* Scanner real de QR code */}
-                        <div className="w-full h-full relative">
+                        <div className="w-full h-full">
                           <div className="absolute top-2 right-2 z-10">
                             <Button 
                               variant="secondary" 
@@ -674,10 +684,17 @@ export default function CheckInPage() {
                             </Button>
                           </div>
                           
-                          <Html5QrcodeScanner
-                            onScan={handleScan}
-                            onError={handleScanError}
-                          />
+                          <div className="relative w-full h-full">
+                            <Html5QrcodeScanner
+                              onScan={handleScan}
+                              onError={handleScanError}
+                            />
+                            
+                            {/* Overlay com instruções */}
+                            <div className="absolute bottom-2 left-0 right-0 text-center px-4 py-2 bg-black/50 text-white text-sm rounded mx-2">
+                              Aponte para o código QR e mantenha o dispositivo estável
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -737,10 +754,16 @@ export default function CheckInPage() {
               <CardHeader className={lastResult.success ? "bg-green-50" : "bg-red-50"}>
                 <div className="flex justify-between items-center">
                   <CardTitle>
-                    {lastResult.success ? "Check-in Confirmado" : "Check-in Falhou"}
+                    {lastResult.success 
+                      ? (lastResult.guest?.checked_in ? "Check-in Confirmado" : "Convidado na Lista") 
+                      : "Check-in Falhou"}
                   </CardTitle>
-                  <Badge variant={lastResult.success ? "default" : "destructive"}>
-                    {lastResult.success ? "Sucesso" : "Erro"}
+                  <Badge variant={lastResult.success ? (lastResult.guest?.checked_in ? "default" : "outline") : "destructive"}>
+                    {lastResult.success 
+                      ? (lastResult.guest?.checked_in 
+                          ? (lastResult.message?.includes("já fez check-in") ? "Repetido" : "Sucesso") 
+                          : "Na Lista") 
+                      : "Erro"}
                   </Badge>
                 </div>
                 <CardDescription>{lastResult.message}</CardDescription>
