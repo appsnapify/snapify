@@ -591,16 +591,16 @@ export default function CheckInPage() {
       <h1 className="text-2xl font-bold mb-6">Check-in de Convidados</h1>
       
       {/* Seleção de evento */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Selecione o Evento</CardTitle>
-          <CardDescription>
-            Escolha o evento para realizar o check-in dos convidados
+      <Card className="mb-4 md:mb-6 shadow-sm">
+        <CardHeader className="pb-3 md:pb-4">
+          <CardTitle className="text-lg md:text-xl">Selecione o Evento</CardTitle>
+          <CardDescription className="text-sm">
+            Escolha o evento para realizar o check-in
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2 mb-4">
-            <Label htmlFor="event">Selecione o Evento</Label>
+          <div className="grid gap-2">
+            <Label htmlFor="event" className="text-sm">Evento</Label>
             <select
               id="event"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -670,15 +670,15 @@ export default function CheckInPage() {
                 <TabsContent value="camera">
                   <div className="space-y-4">
                     {scanning ? (
-                      <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
+                      <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative md:aspect-video sm:aspect-auto sm:min-h-[70vh]">
                         {/* Scanner real de QR code */}
                         <div className="w-full h-full">
-                          <div className="absolute top-2 right-2 z-10">
+                          <div className="absolute top-3 right-3 z-10">
                             <Button 
                               variant="secondary" 
                               size="sm" 
                               onClick={stopScanning}
-                              className="rounded-full w-8 h-8 p-0"
+                              className="rounded-full w-8 h-8 p-0 shadow-md bg-white/80 hover:bg-white"
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -691,8 +691,8 @@ export default function CheckInPage() {
                             />
                             
                             {/* Overlay com instruções */}
-                            <div className="absolute bottom-2 left-0 right-0 text-center px-4 py-2 bg-black/50 text-white text-sm rounded mx-2">
-                              Aponte para o código QR e mantenha o dispositivo estável
+                            <div className="absolute bottom-3 left-0 right-0 mx-auto text-center px-4 py-2 bg-black/60 text-white text-sm rounded-full max-w-64 shadow-lg backdrop-blur-sm">
+                              Aponte para o QR code
                             </div>
                           </div>
                         </div>

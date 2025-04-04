@@ -12,6 +12,21 @@ export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps)
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Detectar se é dispositivo móvel
+  useEffect(() => {
+    const checkMobile = () => {
+      const ua = navigator.userAgent.toLowerCase();
+      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|windows phone/.test(ua);
+      setIsMobile(isMobileDevice);
+      console.log("Tipo de dispositivo:", isMobileDevice ? "Móvel" : "Desktop");
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   useEffect(() => {
     // Criar e inicializar o scanner
@@ -44,29 +59,48 @@ export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps)
           verbose: true // Ativar logs detalhados para debugging
         });
         
-        // Definir o tamanho para melhorar a detecção
-        const width = Math.min(containerRef.current.clientWidth, 500);
-        const height = Math.min(containerRef.current.clientHeight, 400);
+        // Definir o tamanho baseado no tipo de dispositivo
+        const containerWidth = containerRef.current.clientWidth;
+        const containerHeight = containerRef.current.clientHeight;
         
-        console.log(`Dimensões do container: ${width}x${height}px`);
+        console.log(`Dimensões do container: ${containerWidth}x${containerHeight}px`);
         
-        // Iniciar a câmera com configurações avançadas para melhor detecção
+        // Calcular dimensões otimizadas para cada tipo de dispositivo
+        let qrboxSize = {
+          width: Math.min(250, containerWidth - 40),
+          height: Math.min(250, containerHeight - 40)
+        };
+        
+        // Em dispositivos móveis, usar uma área de escaneamento maior
+        if (isMobile) {
+          qrboxSize = {
+            width: Math.min(280, containerWidth - 20), 
+            height: Math.min(280, containerHeight - 20)
+          };
+        }
+        
+        console.log("Tamanho da área de escaneamento:", qrboxSize);
+        
+        // Iniciar a câmera com configurações otimizadas para mobile
         await scannerRef.current.start(
-          { facingMode: 'environment' },  // Usar câmera traseira quando disponível
+          { 
+            facingMode: 'environment',  // Usar câmera traseira
+            aspectRatio: isMobile ? 4/3 : 1.0 // Ajustar aspect ratio para mobile
+          },
           {
-            fps: 15, // Aumentar FPS para melhor detecção
-            qrbox: { 
-              width: Math.min(300, width - 50), 
-              height: Math.min(300, height - 50) 
-            },
-            aspectRatio: 1.0,
-            disableFlip: false, // Permitir flip da imagem para melhorar reconhecimento
+            fps: isMobile ? 20 : 15, // Aumentar FPS em dispositivos móveis
+            qrbox: qrboxSize,
+            disableFlip: false,
             showTorchButtonIfSupported: true,
             showZoomSliderIfSupported: true,
           },
           (decodedText) => {
             console.log("[QR-SCANNER] Código detectado:", decodedText);
             if (decodedText && decodedText.trim().length > 0) {
+              // Vibrar em dispositivos móveis quando detectar um código (opcional)
+              if (isMobile && navigator.vibrate) {
+                navigator.vibrate(200);
+              }
               onScan({ text: decodedText.trim() });
             } else {
               console.warn("[QR-SCANNER] Código detectado vazio");
@@ -83,10 +117,18 @@ export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps)
           const videoElement = document.querySelector('#html5-qr-code-scanner video');
           if (videoElement) {
             console.log("[QR-SCANNER] Ajustando estilo do elemento de vídeo");
-            (videoElement as HTMLElement).style.width = '100%';
-            (videoElement as HTMLElement).style.height = 'auto';
-            (videoElement as HTMLElement).style.maxHeight = '300px';
-            (videoElement as HTMLElement).style.objectFit = 'contain';
+            
+            const videoStyle = (videoElement as HTMLElement).style;
+            videoStyle.width = '100%';
+            videoStyle.height = 'auto';
+            videoStyle.maxHeight = isMobile ? '100%' : '300px';
+            videoStyle.objectFit = 'cover';
+            
+            // Ajustes específicos para mobile
+            if (isMobile) {
+              videoStyle.borderRadius = '8px';
+              videoStyle.transform = 'scaleX(-1)'; // Espelhar horizontalmente em dispositivos móveis para tornar mais natural
+            }
           } else {
             console.warn("[QR-SCANNER] Elemento de vídeo não encontrado");
           }
@@ -125,10 +167,10 @@ export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps)
         }
       }
     };
-  }, [onScan, onError]);
+  }, [onScan, onError, isMobile]);
   
   return (
-    <div className="qr-scanner-container">
+    <div className={`qr-scanner-container ${isMobile ? 'qr-scanner-mobile' : ''}`}>
       {isInitializing && (
         <div className="scanner-loading">
           Inicializando câmera...
@@ -141,6 +183,12 @@ export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps)
           width: 100%;
           min-height: 350px;
           position: relative;
+          overflow: hidden;
+        }
+        
+        .qr-scanner-mobile {
+          min-height: 85vh;
+          border-radius: 12px;
         }
         
         .scanner-area {
@@ -153,6 +201,10 @@ export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps)
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+        
+        .qr-scanner-mobile .scanner-area {
+          min-height: 85vh;
         }
         
         .scanner-loading {
@@ -183,10 +235,24 @@ export default function Html5QrScanner({ onScan, onError }: Html5QrScannerProps)
           object-fit: contain !important;
         }
         
+        /* Ajustes mobile */
+        .qr-scanner-mobile :global(#html5-qr-code-scanner) {
+          min-height: 85vh !important;
+        }
+        
+        .qr-scanner-mobile :global(#html5-qr-code-scanner video) {
+          max-height: 85vh !important;
+          object-fit: cover !important;
+        }
+        
         /* Melhorar a visibilidade da área de escaneamento */
         :global(.qr-border) {
           border: 5px solid #4f46e5 !important;
           box-shadow: 0 0 0 5px rgba(79, 70, 229, 0.3) !important;
+        }
+        
+        .qr-scanner-mobile :global(.qr-border) {
+          border: 8px solid #4f46e5 !important;
         }
       `}</style>
     </div>
